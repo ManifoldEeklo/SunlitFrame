@@ -29,19 +29,50 @@ vercel                  # follow the prompts, creates a preview deployment
 ## 3. Set the environment variables
 
 In the Vercel dashboard: **Project → Settings → Environment Variables**,
-add both, then redeploy (or run `vercel --prod` again):
+add all six, then redeploy (or run `vercel --prod` again):
 
-| Name                          | Value                              |
-|-------------------------------|-------------------------------------|
-| `UPSTASH_REDIS_REST_URL`      | from the Upstash REST API page      |
-| `UPSTASH_REDIS_REST_TOKEN`    | from the Upstash REST API page      |
+| Name                          | Value                                              |
+|-------------------------------|------------------------------------------------------|
+| `UPSTASH_REDIS_REST_URL`      | from the Upstash REST API page                     |
+| `UPSTASH_REDIS_REST_TOKEN`    | from the Upstash REST API page                     |
+| `ADMIN_PASSWORD`              | a password of your choosing, for the Admin panel   |
+| `VAPID_PUBLIC_KEY`            | see "Push notification setup" below                |
+| `VAPID_PRIVATE_KEY`           | see "Push notification setup" below — keep secret  |
+| `VAPID_SUBJECT`               | `mailto:you@example.com` (any contact address)     |
 
 If using the CLI instead:
 ```bash
 vercel env add UPSTASH_REDIS_REST_URL
 vercel env add UPSTASH_REDIS_REST_TOKEN
+vercel env add ADMIN_PASSWORD
+vercel env add VAPID_PUBLIC_KEY
+vercel env add VAPID_PRIVATE_KEY
+vercel env add VAPID_SUBJECT
 vercel --prod
 ```
+
+None of these are written into the code or the repo — they only exist
+as environment variables, so they're not visible to anyone browsing
+your source (e.g. if the repo is ever public).
+
+### Push notification setup (VAPID keys)
+
+Push notifications need one cryptographic key pair, generated once.
+If you already have a set (e.g. the ones given to you alongside this
+project), just use those. To generate your own instead:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+This prints a public and a private key — put them in
+`VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` respectively.
+`VAPID_PRIVATE_KEY` must stay secret; `VAPID_PUBLIC_KEY` is fine to be
+public (the browser needs it to subscribe).
+
+If these two variables aren't set, the app still works completely
+normally — messages just won't trigger a push notification, only the
+in-app banner while someone has the page open.
 
 ## 4. Share the URL
 
@@ -52,20 +83,39 @@ the server the whole time.
 
 ## How it works
 
+- **Push notifications**: tapping "🔔 Enable notifications" in the
+  footer asks the browser for permission, then registers a
+  subscription with the server (`api/subscribe.js`). From then on,
+  sending a message goes through `api/send-message.js` — the *only*
+  path a chat message can be written now (the general proxy no longer
+  accepts chat writes, see `api/redis.js` below) — which stores the
+  message and pushes a real OS-level notification to everyone else's
+  subscribed devices via `web-push`, using the `VAPID_*` environment
+  variables. This works even if the app/browser tab isn't open.
+  - **iPhone requirement**: iOS only allows web push for sites that
+    have been **"Added to Home Screen"** (Share → Add to Home Screen)
+    and reopened from that icon — a plain Safari tab cannot receive
+    push notifications at all, by Apple's design. The app detects this
+    and shows a hint instead of the button until that's done.
+  - If `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` aren't set, everything
+    else still works fine — just no push, only the in-app banner.
+  - `sw.js` is the service worker that actually displays the
+    notification and focuses/opens the app when tapped.
+  - `manifest.json` + `icons/` make the site installable as a home
+    screen app (required for the iOS push requirement above).
 - `index.html` — the whole UI (vanilla JS, no build step, no framework).
 - `api/redis.js` — a serverless function that forwards a small whitelist
   of commands to Upstash using the secret token:
   - `GET` / `SET` / `DEL` for `contest:index`, `photo:*`, and each
     user's `presence:*` heartbeat, plus read-only `GET` on `app:users`.
-  - `RPUSH` / `LRANGE` / `LTRIM` for `chat:group` only — lists give
-    atomic appends, so two people sending at the same instant can't
-    overwrite each other.
+  - `LRANGE` (read-only) on `chat:group` — writing a message no longer
+    goes through this endpoint at all; see `api/send-message.js`.
 - `api/admin.js` — a separate serverless function that manages the user
   roster (`app:users` in Redis). Reading the list is public; adding or
   removing a user requires the admin password, checked **server-side**
-  here (never trust a client-only password check). The password is
-  `Admin123`, set as `ADMIN_PASSWORD` near the top of the file — change
-  it there if you want something else.
+  here (never trust a client-only password check). The password itself
+  lives only in the `ADMIN_PASSWORD` environment variable (see step 3
+  above) — it's never in the code or the repo.
 - There's no login system beyond that — people pick their name from
   whatever roster the admin has set up (seeded with **Rune, Lander,
   Zoë, Jurgen** the first time), remembered per-device in

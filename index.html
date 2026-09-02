@@ -8,6 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="theme-color" content="#0a1615" />
 <title>SummerContest — Vacation Photo Contest</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="SummerContest" />
 <style>
   :root {
     --ink: #eef1ea;
@@ -176,7 +180,21 @@
     margin: 34px auto 0;
     padding: 0 24px calc(20px + env(safe-area-inset-bottom));
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
+  .notif-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .notif-btn:disabled { opacity: 0.6; cursor: default; }
   .admin-link {
     background: none;
     border: none;
@@ -495,7 +513,6 @@
   const FALLBACK_USERS = ['Rune', 'Lander', 'Zoë', 'Jurgen']; // used only if the user list can't be fetched
   let FIXED_USERS = FALLBACK_USERS.slice(); // the real roster, loaded from the server and editable via Admin
   const CHAT_POLL_MS = 3000;
-  const CHAT_HISTORY_LIMIT = 200;
   const PRESENCE_HEARTBEAT_MS = 8000;
   const PRESENCE_ONLINE_MS = 20000; // considered online if heartbeat seen within this window
 
@@ -518,6 +535,8 @@
     adminPasswordCache: null, // kept in memory only (never persisted) once verified this session
     adminError: null,
     adminBusy: false,
+    pushStatus: 'unknown', // 'unknown' | 'unsupported' | 'ios-needs-install' | 'default' | 'enabled' | 'denied'
+    pushBusy: false,
   };
 
   // --- User roster: stored server-side, editable via the Admin panel ---
@@ -757,6 +776,118 @@
     if (state.presencePollHandle) { clearInterval(state.presencePollHandle); state.presencePollHandle = null; }
   }
 
+  // --- Push notifications ---
+  // Detects what's possible on this device/browser and drives the
+  // "Enable notifications" flow. iOS Safari only supports web push once
+  // the site has been added to the home screen and reopened from there —
+  // there's no way around that, it's an OS-level restriction.
+  function isIos() {
+    return /iP(hone|od|ad)/.test(navigator.userAgent || '');
+  }
+  function isStandalone() {
+    return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+  }
+  function pushSupported() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+  function detectPushStatus() {
+    if (!pushSupported()) {
+      state.pushStatus = (isIos() && !isStandalone()) ? 'ios-needs-install' : 'unsupported';
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      // still need to confirm we actually hold a live subscription, done async elsewhere
+      state.pushStatus = 'checking';
+    } else if (Notification.permission === 'denied') {
+      state.pushStatus = 'denied';
+    } else {
+      state.pushStatus = 'default';
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const output = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+    return output;
+  }
+
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    try { return await navigator.serviceWorker.register('/sw.js'); } catch (e) { return null; }
+  }
+
+  async function refreshPushSubscriptionStatus() {
+    if (!pushSupported()) return;
+    if (Notification.permission !== 'granted') { detectPushStatus(); return; }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      state.pushStatus = sub ? 'enabled' : 'default';
+    } catch (e) {
+      state.pushStatus = 'default';
+    }
+    updatePushDOM();
+  }
+
+  async function enableNotifications() {
+    if (!pushSupported()) {
+      if (isIos() && !isStandalone()) {
+        showToast('On iPhone: tap Share, then "Add to Home Screen", then open SummerContest from your home screen to enable notifications.');
+      } else {
+        showToast("This browser doesn't support notifications.");
+      }
+      return;
+    }
+    state.pushBusy = true;
+    render();
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        state.pushStatus = permission === 'denied' ? 'denied' : 'default';
+        state.pushBusy = false;
+        render();
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const keyRes = await fetch('/api/push-key');
+      const keyData = await keyRes.json();
+      if (!keyRes.ok || !keyData.publicKey) throw new Error(keyData.error || 'Push is not configured on the server yet.');
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+      });
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', username: state.username, subscription: sub.toJSON ? sub.toJSON() : sub }),
+      });
+      state.pushStatus = 'enabled';
+      showToast('Notifications are on for this device.');
+    } catch (e) {
+      showToast('Could not enable notifications: ' + e.message);
+    }
+    state.pushBusy = false;
+    render();
+  }
+
+  function updatePushDOM() {
+    const btn = document.getElementById('notif-btn');
+    if (!btn) return;
+    btn.textContent = pushButtonLabel();
+    btn.disabled = state.pushBusy;
+  }
+  function pushButtonLabel() {
+    if (state.pushStatus === 'enabled') return '🔔 Notifications on';
+    if (state.pushStatus === 'denied') return '🔕 Notifications blocked';
+    if (state.pushStatus === 'ios-needs-install') return '🔔 Enable notifications';
+    if (state.pushStatus === 'unsupported') return '🔔 Enable notifications';
+    return state.pushBusy ? '🔔 Enabling…' : '🔔 Enable notifications';
+  }
+
   async function sendChatMessage(text) {
     const clean = text.trim().slice(0, 500);
     if (!clean || !state.username) return;
@@ -771,8 +902,13 @@
     markThreadSeen();
     updateChatDOM();
     try {
-      await redisCmd(['RPUSH', GROUP_THREAD_KEY, JSON.stringify(msg)]);
-      await redisCmd(['LTRIM', GROUP_THREAD_KEY, '-' + CHAT_HISTORY_LIMIT, '-1']);
+      const res = await fetch('/api/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: state.username, text: clean }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
     } catch (e) {
       showToast('Message failed to send: ' + e.message);
     }
@@ -904,7 +1040,28 @@
     loadLastSeen();
     startChatPolling();
     startPresenceLoop();
+    reassociatePushSubscriptionWithCurrentUser();
     render();
+  }
+
+  // If this browser already holds a push subscription (granted under a
+  // previous named user on this same shared device), re-save it under
+  // whoever's signed in now so they keep getting notifications without
+  // needing to tap "Enable notifications" again.
+  async function reassociatePushSubscriptionWithCurrentUser() {
+    if (!pushSupported() || Notification.permission !== 'granted') return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', username: state.username, subscription: sub.toJSON ? sub.toJSON() : sub }),
+      });
+      state.pushStatus = 'enabled';
+      updatePushDOM();
+    } catch (e) { /* best-effort */ }
   }
 
   async function loadIndex() {
@@ -1082,6 +1239,7 @@
       </div>
 
       <div class="app-footer">
+        ${state.username ? `<button class="notif-btn" id="notif-btn" ${state.pushBusy ? 'disabled' : ''}>${pushButtonLabel()}</button>` : ''}
         <button class="admin-link" id="admin-link">Admin</button>
       </div>
 
@@ -1233,6 +1391,15 @@
       // the very first pick is required.
       pickerOverlay.onclick = (e) => {
         if (e.target === pickerOverlay) { state.showSwitcher = false; render(); }
+      };
+    }
+
+    const notifBtn = document.getElementById('notif-btn');
+    if (notifBtn) {
+      notifBtn.onclick = () => {
+        if (state.pushStatus === 'enabled') { showToast('Notifications are already on for this device.'); return; }
+        if (state.pushStatus === 'denied') { showToast('Notifications are blocked in your browser settings for this site — re-enable them there first.'); return; }
+        enableNotifications();
       };
     }
 
@@ -1413,8 +1580,12 @@
     await loadUsersList();
     loadUsername();
     if (state.username) { loadLastSeen(); startChatPolling(); startPresenceLoop(); }
+    detectPushStatus();
     render();
     await refreshAll();
+    await registerServiceWorker();
+    await refreshPushSubscriptionStatus();
+    updatePushDOM();
   })();
 })();
 </script>

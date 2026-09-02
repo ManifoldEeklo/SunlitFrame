@@ -3,12 +3,15 @@
 // of the app. Adding/removing a user requires the admin password, checked
 // here on the server — never trust a client-side-only password check.
 //
-// NOTE: This is a simple shared password for a small private group app,
-// not real authentication. It stops casual tampering, not a determined
-// attacker who could read the client source. Don't reuse this password
+// The password itself lives ONLY in Vercel's environment variables
+// (ADMIN_PASSWORD) — never in this file, never in the repo, and never sent
+// to the browser except as whatever the admin types into the prompt.
+//
+// NOTE: This is still a simple shared password for a small private group
+// app, not full authentication (no sessions, no rate limiting). It stops
+// casual tampering, not a determined attacker. Don't reuse this password
 // anywhere sensitive.
 
-const ADMIN_PASSWORD = 'Admin123';
 const USERS_KEY = 'app:users';
 const DEFAULT_USERS = ['Rune', 'Lander', 'Zoë', 'Jurgen'];
 const MAX_USERNAME_LEN = 30;
@@ -64,6 +67,12 @@ module.exports = async (req, res) => {
     return;
   }
 
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    res.status(500).json({ error: 'Server is missing the ADMIN_PASSWORD environment variable — set it in Vercel Project Settings.' });
+    return;
+  }
+
   const body = req.body || {};
   const action = body.action;
 
@@ -75,7 +84,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'verify') {
-      if (body.password !== ADMIN_PASSWORD) {
+      if (body.password !== adminPassword) {
         res.status(401).json({ error: 'Incorrect admin password' });
         return;
       }
@@ -84,7 +93,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'add' || action === 'remove') {
-      if (body.password !== ADMIN_PASSWORD) {
+      if (body.password !== adminPassword) {
         res.status(401).json({ error: 'Incorrect admin password' });
         return;
       }

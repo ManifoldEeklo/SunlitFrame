@@ -8,12 +8,12 @@
 // and only allows them to touch this app's own keys, so it can't be
 // used as an open Redis proxy even though the endpoint itself is public.
 
-const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'RPUSH', 'LRANGE', 'LTRIM']);
+const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'LRANGE']);
 const INDEX_KEY = 'contest:index';
 const GROUP_CHAT_KEY = 'chat:group';
 const MAX_VALUE_BYTES = 3 * 1024 * 1024; // 3MB safety cap per value
 
-const LIST_COMMANDS = new Set(['RPUSH', 'LRANGE', 'LTRIM']);
+const LIST_COMMANDS = new Set(['LRANGE']);
 
 // The user roster itself is dynamic now (added/removed via the Admin panel,
 // stored under app:users and managed exclusively by api/admin.js — writes
@@ -36,8 +36,10 @@ function isDataKeyAllowed(key, cmdName) {
   if (key === 'app:users' && cmdName === 'GET') return true;
   return false;
 }
-// RPUSH/LRANGE/LTRIM: only the single shared group chat thread — there's no
-// 1:1 messaging, everyone sends to everyone.
+// LRANGE (read-only): the shared group chat thread. Writing a message
+// (RPUSH/LTRIM) is intentionally NOT allowed here anymore — it only
+// happens via /api/send-message.js, which also fans out push
+// notifications, so there's exactly one path a message can be created.
 function isChatKeyAllowed(key) {
   return key === GROUP_CHAT_KEY;
 }
@@ -71,7 +73,7 @@ module.exports = async (req, res) => {
       res.status(403).json({ error: 'Key not allowed' });
       return;
     }
-    if (cmdName === 'SET' || cmdName === 'RPUSH') {
+    if (cmdName === 'SET') {
       const value = command[2];
       if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > MAX_VALUE_BYTES) {
         res.status(413).json({ error: 'Value too large' });
