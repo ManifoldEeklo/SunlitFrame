@@ -10,30 +10,23 @@
 
 const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'RPUSH', 'LRANGE', 'LTRIM']);
 const INDEX_KEY = 'contest:index';
+const GROUP_CHAT_KEY = 'chat:group';
 const MAX_VALUE_BYTES = 3 * 1024 * 1024; // 3MB safety cap per value
 const FIXED_USERS = ['Rune', 'Lander', 'Zoë'];
-const GROUP_CHAT_KEY = 'chat:group';
-
-// Precompute the exact set of valid 1:1 chat keys (one per unique pair of
-// the fixed users), so the proxy can't be used to write chat data under
-// arbitrary keys.
-function dmKey(a, b) {
-  return 'chat:dm:' + [a, b].sort().join('__');
-}
-const VALID_DM_KEYS = new Set();
-for (let i = 0; i < FIXED_USERS.length; i++) {
-  for (let j = i + 1; j < FIXED_USERS.length; j++) {
-    VALID_DM_KEYS.add(dmKey(FIXED_USERS[i], FIXED_USERS[j]));
-  }
-}
+const VALID_PRESENCE_KEYS = new Set(FIXED_USERS.map(u => 'presence:' + u));
 
 const LIST_COMMANDS = new Set(['RPUSH', 'LRANGE', 'LTRIM']);
 
+// GET/SET/DEL: the photo gallery data, plus each user's presence heartbeat.
 function isDataKeyAllowed(key) {
-  return key === INDEX_KEY || (typeof key === 'string' && key.startsWith('photo:'));
+  return key === INDEX_KEY
+    || (typeof key === 'string' && key.startsWith('photo:'))
+    || VALID_PRESENCE_KEYS.has(key);
 }
+// RPUSH/LRANGE/LTRIM: only the single shared group chat thread — there's no
+// 1:1 messaging, everyone sends to everyone.
 function isChatKeyAllowed(key) {
-  return key === GROUP_CHAT_KEY || VALID_DM_KEYS.has(key);
+  return key === GROUP_CHAT_KEY;
 }
 
 module.exports = async (req, res) => {

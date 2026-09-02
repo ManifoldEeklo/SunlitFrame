@@ -265,31 +265,10 @@
   .chat-panel-head {
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--line);
-    padding: 8px 8px 8px 12px;
+    padding: 10px 8px 10px 14px;
     flex: 0 0 auto;
   }
-  .chat-tabs { display: flex; gap: 4px; overflow-x: auto; }
-  .chat-tab {
-    position: relative;
-    background: none;
-    border: none;
-    color: var(--ink-dim);
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: inherit;
-  }
-  .chat-tab-active { background: var(--panel-2); color: var(--ink); font-weight: 600; }
-  .chat-tab-dot {
-    display: inline-block;
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #e5484d;
-    margin-left: 5px;
-    vertical-align: middle;
-  }
+  .chat-panel-title { font-size: 14px; font-weight: 600; color: var(--ink); }
   .chat-close { background: none; border: none; color: var(--ink-dim); font-size: 16px; cursor: pointer; padding: 4px 8px; }
   .chat-messages {
     flex: 1 1 auto;
@@ -346,39 +325,63 @@
     .chat-fab { right: calc(14px + env(safe-area-inset-right)); }
   }
 
-  /* ---- Incoming message notification ---- */
-  .msg-notify-overlay {
-    position: fixed; inset: 0;
+  /* ---- Incoming message banner (slides in over the top header) ---- */
+  .msg-banner {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    left: 12px; right: 12px;
+    margin: 0 auto;
+    max-width: 420px;
     z-index: 2200;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(4,10,10,0.45);
-    padding: 24px;
-    cursor: pointer;
-    animation: msgNotifyFadeIn 0.2s ease;
-  }
-  .msg-notify-box {
-    background: var(--panel);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel-2);
     border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 20px 26px 22px;
-    max-width: min(84vw, 300px);
-    box-shadow: 0 18px 50px rgba(0,0,0,0.55);
-    text-align: center;
-    animation: msgNotifyPop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+    cursor: pointer;
+    animation: msgBannerSlide 0.32s cubic-bezier(0.22, 0.9, 0.32, 1.15);
   }
-  .msg-notify-logo { width: 64px; height: 54px; margin: 0 auto 10px; }
-  .msg-notify-logo svg { width: 100%; height: 100%; display: block; border-radius: 6px; }
-  .msg-notify-from { font-size: 13px; font-weight: 700; color: var(--coral); margin-bottom: 4px; }
-  .msg-notify-text {
-    font-size: 14.5px;
+  .msg-banner-logo { flex: 0 0 auto; width: 38px; height: 32px; }
+  .msg-banner-logo svg { width: 100%; height: 100%; display: block; border-radius: 5px; }
+  .msg-banner-body { flex: 1 1 auto; min-width: 0; }
+  .msg-banner-from { font-size: 12px; font-weight: 700; color: var(--coral); }
+  .msg-banner-text {
+    font-size: 13.5px;
     color: var(--ink);
-    word-break: break-word;
-    max-height: 4.6em;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .msg-notify-hint { font-size: 11px; color: var(--ink-dim); margin-top: 10px; }
-  @keyframes msgNotifyFadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes msgNotifyPop { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
+  @keyframes msgBannerSlide {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- Presence row (online/offline dots, cosmetic only) ---- */
+  .presence-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .presence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .presence-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #6b7674;
+    flex: 0 0 auto;
+  }
+  .presence-online .presence-dot { background: #3ecf6e; box-shadow: 0 0 0 2px rgba(62,207,110,0.18); }
+  .presence-offline .presence-dot { background: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,0.14); }
 </style>
 </head>
 <body>
@@ -402,6 +405,8 @@
   const FIXED_USERS = ['Rune', 'Lander', 'Zoë'];
   const CHAT_POLL_MS = 3000;
   const CHAT_HISTORY_LIMIT = 200;
+  const PRESENCE_HEARTBEAT_MS = 8000;
+  const PRESENCE_ONLINE_MS = 20000; // considered online if heartbeat seen within this window
 
   let state = {
     username: null,
@@ -411,11 +416,12 @@
     toastMsg: null,
     showSwitcher: false,
     chatOpen: false,
-    chatTab: 'group',
     chats: {},        // threadKey -> array of {id, from, text, ts}
     lastSeen: {},      // threadKey -> timestamp of the last message the user has viewed
     chatPollHandle: null,
     chatSeenBaseline: {}, // threadKey -> id of the last message already accounted for (notified or was there at load)
+    presence: {},      // name -> boolean online status (cosmetic only)
+    presencePollHandle: null,
   };
 
   // --- Backend: our own /api/redis serverless proxy (Upstash token stays server-side) ---
@@ -435,21 +441,8 @@
   async function redisSet(key, value) { return redisCmd(['SET', key, value]); }
   async function redisDel(key) { return redisCmd(['DEL', key]); }
 
-  // --- Chat: group thread + one 1:1 thread per pair of the fixed users ---
-  function dmKeyFor(a, b) { return 'chat:dm:' + [a, b].sort().join('__'); }
-  function otherUsersList() { return FIXED_USERS.filter(u => u !== state.username); }
-  function currentThreadKey() {
-    return state.chatTab === 'group' ? 'chat:group' : dmKeyFor(state.username, state.chatTab);
-  }
-  function relevantThreads() {
-    return [
-      { tabKey: 'group', threadKey: 'chat:group' },
-      ...otherUsersList().map(o => ({ tabKey: o, threadKey: dmKeyFor(state.username, o) })),
-    ];
-  }
-  function allRelevantThreadKeys() {
-    return relevantThreads().map(t => t.threadKey);
-  }
+  // --- Chat: one shared group thread — everyone sends to everyone ---
+  const GROUP_THREAD_KEY = 'chat:group';
 
   function lastSeenStorageKey() { return 'summercontest_lastseen_' + state.username; }
   function loadLastSeen() {
@@ -461,20 +454,19 @@
   function saveLastSeen() {
     try { localStorage.setItem(lastSeenStorageKey(), JSON.stringify(state.lastSeen)); } catch (e) {}
   }
-  function markThreadSeen(threadKey) {
-    const msgs = state.chats[threadKey] || [];
+  function markThreadSeen() {
+    const msgs = state.chats[GROUP_THREAD_KEY] || [];
     const last = msgs[msgs.length - 1];
-    state.lastSeen[threadKey] = last ? last.ts : Date.now();
+    state.lastSeen[GROUP_THREAD_KEY] = last ? last.ts : Date.now();
     saveLastSeen();
   }
-  function hasUnread(threadKey) {
-    const msgs = state.chats[threadKey] || [];
+  function hasUnread() {
+    const msgs = state.chats[GROUP_THREAD_KEY] || [];
     if (!msgs.length) return false;
     const last = msgs[msgs.length - 1];
     if (last.from === state.username) return false;
-    return last.ts > (state.lastSeen[threadKey] || 0);
+    return last.ts > (state.lastSeen[GROUP_THREAD_KEY] || 0);
   }
-  function anyUnread() { return allRelevantThreadKeys().some(hasUnread); }
 
   async function fetchThread(threadKey) {
     try {
@@ -488,35 +480,32 @@
 
   async function pollChatOnce() {
     if (!state.username) return;
-    for (const { tabKey, threadKey } of relevantThreads()) {
-      const msgs = await fetchThread(threadKey);
-      if (msgs) {
-        checkForIncomingNotification(tabKey, threadKey, msgs);
-        state.chats[threadKey] = msgs;
-      }
+    const msgs = await fetchThread(GROUP_THREAD_KEY);
+    if (msgs) {
+      checkForIncomingNotification(msgs);
+      state.chats[GROUP_THREAD_KEY] = msgs;
     }
     updateChatDOM();
   }
 
-  function checkForIncomingNotification(tabKey, threadKey, newMsgs) {
+  function checkForIncomingNotification(newMsgs) {
     const newLastId = newMsgs.length ? newMsgs[newMsgs.length - 1].id : null;
-    const hasBaseline = Object.prototype.hasOwnProperty.call(state.chatSeenBaseline, threadKey);
+    const hasBaseline = Object.prototype.hasOwnProperty.call(state.chatSeenBaseline, GROUP_THREAD_KEY);
     if (!hasBaseline) {
-      // first poll for this thread this session — just record where we stand,
-      // don't pop up a notification for a backlog of already-existing messages
-      // (this also correctly handles an empty thread, so the *next* poll can
-      // tell a genuinely new message apart from "still empty").
-      state.chatSeenBaseline[threadKey] = newLastId;
+      // first poll this session — just record where we stand, don't pop up
+      // a notification for a backlog of already-existing messages (this also
+      // correctly handles an empty thread, so the *next* poll can tell a
+      // genuinely new message apart from "still empty").
+      state.chatSeenBaseline[GROUP_THREAD_KEY] = newLastId;
       return;
     }
-    if (newLastId === state.chatSeenBaseline[threadKey]) return; // nothing new
-    state.chatSeenBaseline[threadKey] = newLastId;
-    if (!newLastId) return; // thread went from having messages to empty — nothing to notify
+    if (newLastId === state.chatSeenBaseline[GROUP_THREAD_KEY]) return; // nothing new
+    state.chatSeenBaseline[GROUP_THREAD_KEY] = newLastId;
+    if (!newLastId) return;
     const newLast = newMsgs[newMsgs.length - 1];
     if (newLast.from === state.username) return; // our own message, already shown optimistically
-    const viewingThisThread = state.chatOpen && currentThreadKey() === threadKey;
-    if (viewingThisThread) return; // already looking at this conversation
-    showIncomingNotification(tabKey, threadKey, newLast);
+    if (state.chatOpen) return; // already looking at the (only) conversation
+    showIncomingNotification(newLast);
   }
 
   let notifyDismissTimer = null;
@@ -525,30 +514,28 @@
     const container = document.getElementById('msg-notify-root');
     if (container) container.innerHTML = '';
   }
-  function showIncomingNotification(tabKey, threadKey, msg) {
+  function showIncomingNotification(msg) {
     const container = document.getElementById('msg-notify-root');
     if (!container) return;
     clearTimeout(notifyDismissTimer);
     container.innerHTML = `
-      <div class="msg-notify-overlay" id="msg-notify-overlay">
-        <div class="msg-notify-box">
-          <div class="msg-notify-logo">${beachArtSvg(false)}</div>
-          <div class="msg-notify-from">${escapeHtml(msg.from)}</div>
-          <div class="msg-notify-text">${escapeHtml(msg.text)}</div>
-          <div class="msg-notify-hint">Tap to open chat</div>
+      <div class="msg-banner" id="msg-banner">
+        <div class="msg-banner-logo">${beachArtSvg(false)}</div>
+        <div class="msg-banner-body">
+          <div class="msg-banner-from">${escapeHtml(msg.from)}</div>
+          <div class="msg-banner-text">${escapeHtml(msg.text)}</div>
         </div>
       </div>
     `;
-    const overlay = document.getElementById('msg-notify-overlay');
-    overlay.onclick = () => {
+    const banner = document.getElementById('msg-banner');
+    banner.onclick = () => {
       dismissIncomingNotification();
-      openChatToThread(tabKey, threadKey);
+      openChatToThread();
     };
     notifyDismissTimer = setTimeout(dismissIncomingNotification, 3000);
   }
 
-  function openChatToThread(tabKey, threadKey) {
-    state.chatTab = tabKey;
+  function openChatToThread() {
     state.chatOpen = true;
     render();
     scrollChatToBottom();
@@ -566,7 +553,7 @@
   }
 
   function pollNowIfActive() {
-    if (state.username) pollChatOnce();
+    if (state.username) { pollChatOnce(); sendPresenceHeartbeat(); fetchPresence(); }
   }
   // Mobile browsers throttle or fully pause setInterval while the tab is
   // backgrounded or the screen is locked, so a poll can silently stall for
@@ -580,23 +567,57 @@
   window.addEventListener('focus', pollNowIfActive);
   window.addEventListener('pageshow', pollNowIfActive);
 
+  // --- Presence: a lightweight heartbeat so the 3 names can show an
+  // online/offline dot. This is purely cosmetic and never affects who can
+  // send or receive messages. ---
+  function presenceKey(name) { return 'presence:' + name; }
+  async function sendPresenceHeartbeat() {
+    if (!state.username) return;
+    try { await redisCmd(['SET', presenceKey(state.username), String(Date.now())]); } catch (e) {}
+  }
+  async function fetchPresence() {
+    for (const name of FIXED_USERS) {
+      try {
+        const raw = await redisCmd(['GET', presenceKey(name)]);
+        const ts = raw ? Number(raw) : 0;
+        state.presence[name] = !!ts && (Date.now() - ts) < PRESENCE_ONLINE_MS;
+      } catch (e) { /* leave previous known status as-is on failure */ }
+    }
+    updatePresenceDOM();
+  }
+  function updatePresenceDOM() {
+    root.querySelectorAll('[data-presence-name]').forEach(el => {
+      const name = el.getAttribute('data-presence-name');
+      el.classList.toggle('presence-online', !!state.presence[name]);
+      el.classList.toggle('presence-offline', !state.presence[name]);
+    });
+  }
+  function startPresenceLoop() {
+    stopPresenceLoop();
+    sendPresenceHeartbeat();
+    fetchPresence();
+    state.presencePollHandle = setInterval(() => { sendPresenceHeartbeat(); fetchPresence(); }, PRESENCE_HEARTBEAT_MS);
+  }
+  function stopPresenceLoop() {
+    if (state.presencePollHandle) { clearInterval(state.presencePollHandle); state.presencePollHandle = null; }
+  }
+
   async function sendChatMessage(text) {
     const clean = text.trim().slice(0, 500);
     if (!clean || !state.username) return;
-    const threadKey = currentThreadKey();
     const msg = {
       id: state.username + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       from: state.username,
       text: clean,
       ts: Date.now(),
     };
-    if (!state.chats[threadKey]) state.chats[threadKey] = [];
-    state.chats[threadKey].push(msg); // optimistic local echo
-    markThreadSeen(threadKey);
+    if (!state.chats[GROUP_THREAD_KEY]) state.chats[GROUP_THREAD_KEY] = [];
+    state.chats[GROUP_THREAD_KEY].push(msg); // optimistic local echo
+    markThreadSeen();
     updateChatDOM();
     try {
-      await redisCmd(['RPUSH', threadKey, JSON.stringify(msg)]);
-      await redisCmd(['LTRIM', threadKey, '-' + CHAT_HISTORY_LIMIT, '-1']);
+      await redisCmd(['RPUSH', GROUP_THREAD_KEY, JSON.stringify(msg)]);
+      await redisCmd(['LTRIM', GROUP_THREAD_KEY, '-' + CHAT_HISTORY_LIMIT, '-1']);
     } catch (e) {
       showToast('Message failed to send: ' + e.message);
     }
@@ -623,12 +644,12 @@
   // full app re-render, so a background poll never wipes out text someone
   // is mid-way through typing in the compose box.
   function updateChatDOM() {
-    if (state.chatOpen) markThreadSeen(currentThreadKey());
+    if (state.chatOpen) markThreadSeen();
 
     const fab = document.getElementById('chat-fab');
     if (fab) {
       const existingDot = fab.querySelector('.chat-fab-dot');
-      const unread = anyUnread();
+      const unread = hasUnread();
       if (unread && !existingDot) {
         const dot = document.createElement('span');
         dot.className = 'chat-fab-dot';
@@ -639,25 +660,10 @@
     }
     if (!state.chatOpen) return;
 
-    root.querySelectorAll('[data-chat-tab]').forEach(btn => {
-      const tabName = btn.getAttribute('data-chat-tab');
-      const key = tabName === 'group' ? 'chat:group' : dmKeyFor(state.username, tabName);
-      const existingDot = btn.querySelector('.chat-tab-dot');
-      const unread = hasUnread(key);
-      if (unread && !existingDot) {
-        const dot = document.createElement('span');
-        dot.className = 'chat-tab-dot';
-        btn.appendChild(dot);
-      } else if (!unread && existingDot) {
-        existingDot.remove();
-      }
-    });
-
-    const threadKey = currentThreadKey();
     const listEl = document.getElementById('chat-messages');
     if (listEl) {
       const wasNearBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 40;
-      listEl.innerHTML = renderChatMessages(state.chats[threadKey] || []);
+      listEl.innerHTML = renderChatMessages(state.chats[GROUP_THREAD_KEY] || []);
       if (wasNearBottom) listEl.scrollTop = listEl.scrollHeight;
     }
   }
@@ -736,13 +742,13 @@
     state.username = name;
     state.showSwitcher = false;
     state.chatOpen = false;
-    state.chatTab = 'group';
     state.chats = {};
     state.chatSeenBaseline = {};
     dismissIncomingNotification();
     try { localStorage.setItem(LS_NAME_KEY, name); } catch (e) {}
     loadLastSeen();
     startChatPolling();
+    startPresenceLoop();
     render();
   }
 
@@ -866,6 +872,13 @@
                 <div class="meta-value">${fmtDate(WINNER_DATE)}</div>
               </div>
             </div>
+            <div class="presence-row">
+              ${FIXED_USERS.map(name => `
+                <span class="presence-chip ${state.presence[name] ? 'presence-online' : 'presence-offline'}" data-presence-name="${escapeHtml(name)}">
+                  <span class="presence-dot"></span>${escapeHtml(name)}
+                </span>
+              `).join('')}
+            </div>
           </div>
         </div>
       </div>
@@ -916,32 +929,24 @@
   }
 
   function chatWidgetHtml() {
-    const unread = anyUnread();
+    const unread = hasUnread();
     return `
-      <button class="chat-fab" id="chat-fab" title="Messages">💬${unread ? '<span class="chat-fab-dot"></span>' : ''}</button>
+      <button class="chat-fab" id="chat-fab" title="Group chat">💬${unread ? '<span class="chat-fab-dot"></span>' : ''}</button>
       ${state.chatOpen ? chatPanelHtml() : ''}
     `;
   }
 
   function chatPanelHtml() {
-    const others = otherUsersList();
-    const tabs = [{ key: 'group', label: 'Group' }, ...others.map(o => ({ key: o, label: o }))];
-    const threadKey = currentThreadKey();
-    const msgs = state.chats[threadKey] || [];
+    const msgs = state.chats[GROUP_THREAD_KEY] || [];
     return `
       <div class="chat-panel">
         <div class="chat-panel-head">
-          <div class="chat-tabs">
-            ${tabs.map(t => {
-              const key = t.key === 'group' ? 'chat:group' : dmKeyFor(state.username, t.key);
-              return `<button class="chat-tab ${state.chatTab === t.key ? 'chat-tab-active' : ''}" data-chat-tab="${escapeHtml(t.key)}">${escapeHtml(t.label)}${hasUnread(key) ? '<span class="chat-tab-dot"></span>' : ''}</button>`;
-            }).join('')}
-          </div>
+          <div class="chat-panel-title">Group chat</div>
           <button class="chat-close" id="chat-close" title="Close">✕</button>
         </div>
         <div class="chat-messages" id="chat-messages">${renderChatMessages(msgs)}</div>
         <form class="chat-compose" id="chat-compose">
-          <input type="text" id="chat-input" placeholder="Message…" maxlength="500" autocomplete="off" />
+          <input type="text" id="chat-input" placeholder="Message everyone…" maxlength="500" autocomplete="off" />
           <button type="submit" class="chat-send">Send</button>
         </form>
       </div>
@@ -1052,17 +1057,6 @@
     const chatClose = document.getElementById('chat-close');
     if (chatClose) chatClose.onclick = () => { state.chatOpen = false; render(); };
 
-    root.querySelectorAll('[data-chat-tab]').forEach(btn => {
-      btn.onclick = () => {
-        state.chatTab = btn.getAttribute('data-chat-tab');
-        markThreadSeen(currentThreadKey());
-        render();
-        scrollChatToBottom();
-        focusChatInput();
-        pollChatOnce().then(scrollChatToBottom);
-      };
-    });
-
     const chatForm = document.getElementById('chat-compose');
     if (chatForm) {
       chatForm.addEventListener('submit', (e) => {
@@ -1114,7 +1108,7 @@
   (async function init() {
     initSplash();
     loadUsername();
-    if (state.username) { loadLastSeen(); startChatPolling(); }
+    if (state.username) { loadLastSeen(); startChatPolling(); startPresenceLoop(); }
     render();
     await refreshAll();
   })();
