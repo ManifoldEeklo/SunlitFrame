@@ -124,6 +124,31 @@
   .modal-box button.primary { background: var(--coral); color: #1c1006; border: none; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
   .modal-error { font-size: 12.5px; color: #ff8080; margin-top: -6px; margin-bottom: 12px; }
 
+  .user-option-list { display: flex; flex-direction: column; gap: 10px; }
+  .user-option {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 12px 16px;
+    background: var(--panel-2);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink);
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .user-option:hover { border-color: var(--coral); }
+  .user-option-active {
+    border-color: #4caf6f;
+    background: rgba(76,175,111,0.14);
+  }
+  .user-option-check {
+    color: #4caf6f;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
 
   @media (max-width: 520px) {
@@ -179,6 +204,127 @@
   @media (prefers-reduced-motion: reduce) {
     .splash-progress-fill { animation-duration: 0.01s; }
   }
+
+  /* ---- Chat widget ---- */
+  .chat-fab {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--coral);
+    color: #1c1006;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    z-index: 900;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chat-fab-dot {
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #e5484d;
+    border: 2px solid var(--page-bg);
+  }
+  .chat-panel {
+    position: fixed;
+    bottom: 82px; right: 20px;
+    width: min(92vw, 340px);
+    height: min(70vh, 460px);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 16px 44px rgba(0,0,0,0.5);
+    z-index: 901;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    padding: 8px 8px 8px 12px;
+    flex: 0 0 auto;
+  }
+  .chat-tabs { display: flex; gap: 4px; overflow-x: auto; }
+  .chat-tab {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .chat-tab-active { background: var(--panel-2); color: var(--ink); font-weight: 600; }
+  .chat-tab-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #e5484d;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .chat-close { background: none; border: none; color: var(--ink-dim); font-size: 16px; cursor: pointer; padding: 4px 8px; }
+  .chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .chat-empty { color: var(--ink-dim); font-size: 13px; text-align: center; margin-top: 20px; }
+  .chat-msg { display: flex; }
+  .chat-msg-self { justify-content: flex-end; }
+  .chat-msg-bubble {
+    max-width: 78%;
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 13.5px;
+  }
+  .chat-msg-self .chat-msg-bubble { background: var(--coral); color: #1c1006; }
+  .chat-msg-sender { font-size: 11px; font-weight: 600; color: var(--coral); margin-bottom: 2px; }
+  .chat-msg-self .chat-msg-sender { display: none; }
+  .chat-msg-text { white-space: pre-wrap; word-break: break-word; }
+  .chat-msg-time { font-size: 10px; opacity: 0.6; margin-top: 3px; text-align: right; }
+  .chat-compose {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .chat-compose input {
+    flex: 1 1 auto;
+    background: var(--page-bg);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .chat-send {
+    background: var(--coral);
+    color: #1c1006;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  @media (max-width: 420px) {
+    .chat-panel { right: 10px; bottom: 78px; width: calc(100vw - 20px); }
+    .chat-fab { right: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -198,6 +344,9 @@
   const MAX_PHOTOS = 20;
   const INDEX_KEY = 'contest:index';
   const LS_NAME_KEY = 'sunlitframes_username';
+  const FIXED_USERS = ['Rune', 'Lander', 'Zoë'];
+  const CHAT_POLL_MS = 5000;
+  const CHAT_HISTORY_LIMIT = 200;
 
   let state = {
     username: null,
@@ -205,6 +354,12 @@
     loading: true,
     lightbox: null,
     toastMsg: null,
+    showSwitcher: false,
+    chatOpen: false,
+    chatTab: 'group',
+    chats: {},        // threadKey -> array of {id, from, text, ts}
+    lastSeen: {},      // threadKey -> timestamp of the last message the user has viewed
+    chatPollHandle: null,
   };
 
   // --- Backend: our own /api/redis serverless proxy (Upstash token stays server-side) ---
@@ -223,6 +378,160 @@
   async function redisGet(key) { return redisCmd(['GET', key]); }
   async function redisSet(key, value) { return redisCmd(['SET', key, value]); }
   async function redisDel(key) { return redisCmd(['DEL', key]); }
+
+  // --- Chat: group thread + one 1:1 thread per pair of the fixed users ---
+  function dmKeyFor(a, b) { return 'chat:dm:' + [a, b].sort().join('__'); }
+  function otherUsersList() { return FIXED_USERS.filter(u => u !== state.username); }
+  function currentThreadKey() {
+    return state.chatTab === 'group' ? 'chat:group' : dmKeyFor(state.username, state.chatTab);
+  }
+  function allRelevantThreadKeys() {
+    return ['chat:group', ...otherUsersList().map(o => dmKeyFor(state.username, o))];
+  }
+
+  function lastSeenStorageKey() { return 'summercontest_lastseen_' + state.username; }
+  function loadLastSeen() {
+    try {
+      const raw = localStorage.getItem(lastSeenStorageKey());
+      state.lastSeen = raw ? JSON.parse(raw) : {};
+    } catch (e) { state.lastSeen = {}; }
+  }
+  function saveLastSeen() {
+    try { localStorage.setItem(lastSeenStorageKey(), JSON.stringify(state.lastSeen)); } catch (e) {}
+  }
+  function markThreadSeen(threadKey) {
+    const msgs = state.chats[threadKey] || [];
+    const last = msgs[msgs.length - 1];
+    state.lastSeen[threadKey] = last ? last.ts : Date.now();
+    saveLastSeen();
+  }
+  function hasUnread(threadKey) {
+    const msgs = state.chats[threadKey] || [];
+    if (!msgs.length) return false;
+    const last = msgs[msgs.length - 1];
+    if (last.from === state.username) return false;
+    return last.ts > (state.lastSeen[threadKey] || 0);
+  }
+  function anyUnread() { return allRelevantThreadKeys().some(hasUnread); }
+
+  async function fetchThread(threadKey) {
+    try {
+      const raw = await redisCmd(['LRANGE', threadKey, '-100', '-1']);
+      const arr = Array.isArray(raw) ? raw : [];
+      return arr.map(s => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
+    } catch (e) {
+      return null; // keep whatever we had before on failure
+    }
+  }
+
+  async function pollChatOnce() {
+    if (!state.username) return;
+    for (const key of allRelevantThreadKeys()) {
+      const msgs = await fetchThread(key);
+      if (msgs) state.chats[key] = msgs;
+    }
+    updateChatDOM();
+  }
+
+  function stopChatPolling() {
+    if (state.chatPollHandle) { clearInterval(state.chatPollHandle); state.chatPollHandle = null; }
+  }
+  function startChatPolling() {
+    stopChatPolling();
+    pollChatOnce();
+    state.chatPollHandle = setInterval(pollChatOnce, CHAT_POLL_MS);
+  }
+
+  async function sendChatMessage(text) {
+    const clean = text.trim().slice(0, 500);
+    if (!clean || !state.username) return;
+    const threadKey = currentThreadKey();
+    const msg = {
+      id: state.username + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      from: state.username,
+      text: clean,
+      ts: Date.now(),
+    };
+    if (!state.chats[threadKey]) state.chats[threadKey] = [];
+    state.chats[threadKey].push(msg); // optimistic local echo
+    markThreadSeen(threadKey);
+    updateChatDOM();
+    try {
+      await redisCmd(['RPUSH', threadKey, JSON.stringify(msg)]);
+      await redisCmd(['LTRIM', threadKey, '-' + CHAT_HISTORY_LIMIT, '-1']);
+    } catch (e) {
+      showToast('Message failed to send: ' + e.message);
+    }
+  }
+
+  function renderChatMessages(msgs) {
+    if (!msgs.length) return `<div class="chat-empty">No messages yet — say hi!</div>`;
+    return msgs.map(m => {
+      const self = m.from === state.username;
+      const time = new Date(m.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="chat-msg ${self ? 'chat-msg-self' : ''}">
+          <div class="chat-msg-bubble">
+            <div class="chat-msg-sender">${escapeHtml(m.from)}</div>
+            <div class="chat-msg-text">${escapeHtml(m.text)}</div>
+            <div class="chat-msg-time">${time}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Patches only the chat widget's DOM (badge / message list) without a
+  // full app re-render, so a background poll never wipes out text someone
+  // is mid-way through typing in the compose box.
+  function updateChatDOM() {
+    if (state.chatOpen) markThreadSeen(currentThreadKey());
+
+    const fab = document.getElementById('chat-fab');
+    if (fab) {
+      const existingDot = fab.querySelector('.chat-fab-dot');
+      const unread = anyUnread();
+      if (unread && !existingDot) {
+        const dot = document.createElement('span');
+        dot.className = 'chat-fab-dot';
+        fab.appendChild(dot);
+      } else if (!unread && existingDot) {
+        existingDot.remove();
+      }
+    }
+    if (!state.chatOpen) return;
+
+    root.querySelectorAll('[data-chat-tab]').forEach(btn => {
+      const tabName = btn.getAttribute('data-chat-tab');
+      const key = tabName === 'group' ? 'chat:group' : dmKeyFor(state.username, tabName);
+      const existingDot = btn.querySelector('.chat-tab-dot');
+      const unread = hasUnread(key);
+      if (unread && !existingDot) {
+        const dot = document.createElement('span');
+        dot.className = 'chat-tab-dot';
+        btn.appendChild(dot);
+      } else if (!unread && existingDot) {
+        existingDot.remove();
+      }
+    });
+
+    const threadKey = currentThreadKey();
+    const listEl = document.getElementById('chat-messages');
+    if (listEl) {
+      const wasNearBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 40;
+      listEl.innerHTML = renderChatMessages(state.chats[threadKey] || []);
+      if (wasNearBottom) listEl.scrollTop = listEl.scrollHeight;
+    }
+  }
+
+  function scrollChatToBottom() {
+    const el = document.getElementById('chat-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+  function focusChatInput() {
+    const el = document.getElementById('chat-input');
+    if (el) el.focus();
+  }
 
   function fmtDate(d) { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
 
@@ -279,11 +588,21 @@
   }
 
   function loadUsername() {
-    try { state.username = localStorage.getItem(LS_NAME_KEY) || null; } catch (e) { state.username = null; }
+    try {
+      const stored = localStorage.getItem(LS_NAME_KEY) || null;
+      state.username = FIXED_USERS.includes(stored) ? stored : null;
+    } catch (e) { state.username = null; }
   }
   function saveUsername(name) {
+    if (!FIXED_USERS.includes(name)) return;
     state.username = name;
+    state.showSwitcher = false;
+    state.chatOpen = false;
+    state.chatTab = 'group';
+    state.chats = {};
     try { localStorage.setItem(LS_NAME_KEY, name); } catch (e) {}
+    loadLastSeen();
+    startChatPolling();
     render();
   }
 
@@ -437,7 +756,7 @@
 
       <div class="section">
         <div class="section-head">
-          <h2 class="section-title headline-font">All entries</h2>
+          <h2 class="section-title headline-font">In competition</h2>
           <div class="section-note">${state.index.length} total</div>
         </div>
         ${state.loading ? `<div class="empty-state">Loading gallery…</div>` :
@@ -446,13 +765,47 @@
         }
       </div>
 
-      ${!state.username ? nameModalHtml() : ''}
+      ${(!state.username || state.showSwitcher) ? userPickerHtml() : ''}
+      ${state.username ? chatWidgetHtml() : ''}
       ${state.lightbox ? lightboxHtml() : ''}
       ${state.toastMsg ? `<div class="toast">${escapeHtml(state.toastMsg)}</div>` : ''}
     `;
 
     attachHandlers();
     hydrateImages();
+  }
+
+  function chatWidgetHtml() {
+    const unread = anyUnread();
+    return `
+      <button class="chat-fab" id="chat-fab" title="Messages">💬${unread ? '<span class="chat-fab-dot"></span>' : ''}</button>
+      ${state.chatOpen ? chatPanelHtml() : ''}
+    `;
+  }
+
+  function chatPanelHtml() {
+    const others = otherUsersList();
+    const tabs = [{ key: 'group', label: 'Group' }, ...others.map(o => ({ key: o, label: o }))];
+    const threadKey = currentThreadKey();
+    const msgs = state.chats[threadKey] || [];
+    return `
+      <div class="chat-panel">
+        <div class="chat-panel-head">
+          <div class="chat-tabs">
+            ${tabs.map(t => {
+              const key = t.key === 'group' ? 'chat:group' : dmKeyFor(state.username, t.key);
+              return `<button class="chat-tab ${state.chatTab === t.key ? 'chat-tab-active' : ''}" data-chat-tab="${escapeHtml(t.key)}">${escapeHtml(t.label)}${hasUnread(key) ? '<span class="chat-tab-dot"></span>' : ''}</button>`;
+            }).join('')}
+          </div>
+          <button class="chat-close" id="chat-close" title="Close">✕</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">${renderChatMessages(msgs)}</div>
+        <form class="chat-compose" id="chat-compose">
+          <input type="text" id="chat-input" placeholder="Message…" maxlength="500" autocomplete="off" />
+          <button type="submit" class="chat-send">Send</button>
+        </form>
+      </div>
+    `;
   }
 
   function photoCardHtml(photo, i, isOwn) {
@@ -466,14 +819,23 @@
     `;
   }
 
-  function nameModalHtml() {
+  function userPickerHtml() {
+    const isSwitch = !!state.username;
+    const options = FIXED_USERS.map(name => {
+      const isActive = name === state.username;
+      return `
+        <button class="user-option${isActive ? ' user-option-active' : ''}" data-pick-user="${escapeHtml(name)}">
+          <span class="user-option-name">${escapeHtml(name)}</span>
+          ${isActive ? `<span class="user-option-check" title="Currently signed in">✓</span>` : ''}
+        </button>
+      `;
+    }).join('');
     return `
-      <div class="modal-overlay">
+      <div class="modal-overlay" id="picker-overlay">
         <div class="modal-box">
-          <h2 class="headline-font">Join the contest</h2>
-          <p>Enter a name so we know which photos are yours.</p>
-          <input type="text" id="name-input" placeholder="Your name" maxlength="30" />
-          <button class="primary" id="name-submit">Continue</button>
+          <h2 class="headline-font">${isSwitch ? 'Switch user' : 'Who are you?'}</h2>
+          <p>${isSwitch ? 'Pick which entrant this device should upload as.' : 'Choose your name to see and manage your entries.'}</p>
+          <div class="user-option-list">${options}</div>
         </div>
       </div>
     `;
@@ -512,19 +874,19 @@
 
   function attachHandlers() {
     const switchBtn = document.getElementById('switch-user-btn');
-    if (switchBtn) switchBtn.onclick = () => {
-      state.username = null;
-      try { localStorage.removeItem(LS_NAME_KEY); } catch (e) {}
-      render();
-    };
+    if (switchBtn) switchBtn.onclick = () => { state.showSwitcher = true; render(); };
 
-    const nameSubmit = document.getElementById('name-submit');
-    if (nameSubmit) {
-      const input = document.getElementById('name-input');
-      const submit = () => { const val = input.value.trim(); if (val) saveUsername(val); };
-      nameSubmit.onclick = submit;
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-      input.focus();
+    root.querySelectorAll('[data-pick-user]').forEach(btn => {
+      btn.onclick = () => saveUsername(btn.getAttribute('data-pick-user'));
+    });
+
+    const pickerOverlay = document.getElementById('picker-overlay');
+    if (pickerOverlay && state.username) {
+      // only allow dismissing by clicking outside once a user is already chosen —
+      // the very first pick is required.
+      pickerOverlay.onclick = (e) => {
+        if (e.target === pickerOverlay) { state.showSwitcher = false; render(); }
+      };
     }
 
     const uploadTrigger = document.getElementById('upload-trigger');
@@ -532,6 +894,45 @@
     if (uploadTrigger && fileInput) {
       uploadTrigger.onclick = () => fileInput.click();
       fileInput.onchange = (e) => { if (e.target.files.length) handleUpload(e.target.files); };
+    }
+
+    const chatFab = document.getElementById('chat-fab');
+    if (chatFab) {
+      chatFab.onclick = () => {
+        state.chatOpen = !state.chatOpen;
+        render();
+        if (state.chatOpen) {
+          scrollChatToBottom();
+          focusChatInput();
+          pollChatOnce().then(scrollChatToBottom);
+        }
+      };
+    }
+
+    const chatClose = document.getElementById('chat-close');
+    if (chatClose) chatClose.onclick = () => { state.chatOpen = false; render(); };
+
+    root.querySelectorAll('[data-chat-tab]').forEach(btn => {
+      btn.onclick = () => {
+        state.chatTab = btn.getAttribute('data-chat-tab');
+        markThreadSeen(currentThreadKey());
+        render();
+        scrollChatToBottom();
+        focusChatInput();
+        pollChatOnce().then(scrollChatToBottom);
+      };
+    });
+
+    const chatForm = document.getElementById('chat-compose');
+    if (chatForm) {
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        sendChatMessage(text);
+      });
     }
 
     root.querySelectorAll('[data-delete-id]').forEach(btn => {
@@ -573,6 +974,7 @@
   (async function init() {
     initSplash();
     loadUsername();
+    if (state.username) { loadLastSeen(); startChatPolling(); }
     render();
     await refreshAll();
   })();
