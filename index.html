@@ -1115,6 +1115,7 @@
     if (remaining <= 0) { showToast("You've reached the 20 photo limit."); return; }
     const toUpload = Array.from(files).slice(0, remaining);
     if (files.length > remaining) showToast(`Only room for ${remaining} more — uploading the first ${remaining}.`);
+    let uploadedAny = false;
     for (const file of toUpload) {
       if (!file.type.startsWith('image/')) continue;
       try {
@@ -1123,11 +1124,22 @@
         await redisSet('photo:' + id, dataUrl);
         state.index.push({ id, owner: state.username, filename: file.name, uploadedAt: new Date().toISOString() });
         await redisSet(INDEX_KEY, JSON.stringify(state.index));
+        uploadedAny = true;
       } catch (e) {
         showToast('Upload failed for ' + file.name + ': ' + e.message);
       }
     }
     render();
+    if (uploadedAny) notifyUploadPush(); // one push per upload batch, not per file
+  }
+
+  function notifyUploadPush() {
+    // Best-effort, fire-and-forget — never blocks or affects the upload UX.
+    fetch('/api/notify-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: state.username }),
+    }).catch(() => {});
   }
 
   async function handleDelete(photo) {

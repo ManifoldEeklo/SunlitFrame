@@ -144,6 +144,13 @@ the server the whole time.
   green/red dot based on a lightweight heartbeat (every 8 seconds,
   considered "online" if seen within the last 20 seconds). This is
   purely cosmetic — it never affects who can send or read messages.
+- **Upload notifications**: right after someone's photo(s) finish
+  uploading, everyone else gets a push notification ("`<name>` has
+  uploaded a nice picture 📸") via `api/notify-upload.js`. Uploading
+  several photos at once still only sends one notification, not one
+  per photo. This shares the same push-sending code as chat messages
+  (`lib/push.js`) and needs the same `VAPID_*` environment variables —
+  if those aren't set, uploads still work fine, there's just no push.
 - Photos are resized/compressed client-side before upload to keep them
   small and fast to sync.
 - Registration closes 2026-09-10, winner announced 2026-09-17 — edit
