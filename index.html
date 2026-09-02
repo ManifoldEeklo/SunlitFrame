@@ -9,6 +9,16 @@
 <meta name="theme-color" content="#0a1615" />
 <title>SummerContest — Vacation Photo Contest</title>
 <style>
+  :root {
+    --ink: #eef1ea;
+    --ink-dim: rgba(238,241,234,0.62);
+    --page-bg: #0a1615;
+    --panel: #0f2422;
+    --panel-2: #14302d;
+    --paper: #fffdf7;
+    --coral: #ff8a5c;
+    --line: rgba(238,241,234,0.14);
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
@@ -24,14 +34,6 @@
     touch-action: manipulation;
   }
   #app-root {
-    --ink: #eef1ea;
-    --ink-dim: rgba(238,241,234,0.62);
-    --page-bg: #0a1615;
-    --panel: #0f2422;
-    --panel-2: #14302d;
-    --paper: #fffdf7;
-    --coral: #ff8a5c;
-    --line: rgba(238,241,234,0.14);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--ink);
     background: var(--page-bg);
@@ -325,39 +327,76 @@
     .chat-fab { right: calc(14px + env(safe-area-inset-right)); }
   }
 
-  /* ---- Incoming message banner (slides in over the top header) ---- */
+  /* ---- Incoming message banner: bold, opaque, drops from the top ---- */
   .msg-banner {
     position: fixed;
-    top: calc(10px + env(safe-area-inset-top));
-    left: 12px; right: 12px;
-    margin: 0 auto;
-    max-width: 420px;
+    top: 0; left: 0; right: 0;
+    width: 100%;
+    height: 20vh;
+    min-height: 128px;
+    max-height: 220px;
     z-index: 2200;
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 10px 14px;
-    box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+    gap: 16px;
+    background: var(--panel);
+    border-bottom: 3px solid var(--coral);
+    box-shadow: 0 12px 34px rgba(0,0,0,0.55);
+    padding: calc(14px + env(safe-area-inset-top)) 22px 14px;
     cursor: pointer;
-    animation: msgBannerSlide 0.32s cubic-bezier(0.22, 0.9, 0.32, 1.15);
+    animation: msgBannerSlideIn 0.32s cubic-bezier(0.22, 0.9, 0.32, 1.05);
   }
-  .msg-banner-logo { flex: 0 0 auto; width: 38px; height: 32px; }
-  .msg-banner-logo svg { width: 100%; height: 100%; display: block; border-radius: 5px; }
+  .msg-banner.msg-banner-hide { animation: msgBannerSlideOut 0.24s ease forwards; }
+  .msg-banner-logo { flex: 0 0 auto; width: 70px; height: 60px; }
+  .msg-banner-logo svg { width: 100%; height: 100%; display: block; border-radius: 8px; }
   .msg-banner-body { flex: 1 1 auto; min-width: 0; }
-  .msg-banner-from { font-size: 12px; font-weight: 700; color: var(--coral); }
+  .msg-banner-from { font-size: 16px; font-weight: 700; color: var(--coral); margin-bottom: 4px; }
   .msg-banner-text {
-    font-size: 13.5px;
+    font-size: 19px;
+    line-height: 1.3;
     color: var(--ink);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
   }
-  @keyframes msgBannerSlide {
-    from { opacity: 0; transform: translateY(-16px); }
-    to { opacity: 1; transform: translateY(0); }
+  @keyframes msgBannerSlideIn {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes msgBannerSlideOut {
+    from { transform: translateY(0); }
+    to { transform: translateY(-100%); }
+  }
+
+  /* ---- Inline compose row (send straight from the header) ---- */
+  .inline-compose {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .inline-compose input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--page-bg);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-size: 16px;
+    font-family: inherit;
+  }
+  .inline-send {
+    flex: 0 0 auto;
+    background: var(--coral);
+    color: #1c1006;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
   }
 
   /* ---- Presence row (online/offline dots, cosmetic only) ---- */
@@ -511,8 +550,13 @@
   let notifyDismissTimer = null;
   function dismissIncomingNotification() {
     clearTimeout(notifyDismissTimer);
-    const container = document.getElementById('msg-notify-root');
-    if (container) container.innerHTML = '';
+    const banner = document.getElementById('msg-banner');
+    if (!banner) return;
+    banner.classList.add('msg-banner-hide');
+    setTimeout(() => {
+      const container = document.getElementById('msg-notify-root');
+      if (container) container.innerHTML = '';
+    }, 260);
   }
   function showIncomingNotification(msg) {
     const container = document.getElementById('msg-notify-root');
@@ -532,7 +576,40 @@
       dismissIncomingNotification();
       openChatToThread();
     };
+    playNotificationChime();
     notifyDismissTimer = setTimeout(dismissIncomingNotification, 3000);
+  }
+
+  // --- Notification sound: a short synthesized two-note chime (no audio
+  // file needed). Browsers block audio until the page has had a user
+  // gesture, so we lazily create/resume a shared AudioContext on the
+  // first tap/keypress and reuse it from then on. ---
+  let audioCtx = null;
+  function ensureAudioContext() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  }
+  document.addEventListener('pointerdown', ensureAudioContext);
+  document.addEventListener('keydown', ensureAudioContext);
+
+  function playNotificationChime() {
+    if (!audioCtx) return; // not unlocked yet (no user gesture so far) — skip silently
+    const now = audioCtx.currentTime;
+    [880, 1175].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.13;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.26);
+    });
   }
 
   function openChatToThread() {
@@ -879,6 +956,11 @@
                 </span>
               `).join('')}
             </div>
+            ${state.username ? `
+            <form class="inline-compose" id="inline-compose">
+              <input type="text" id="inline-chat-input" placeholder="Message everyone…" maxlength="500" autocomplete="off" />
+              <button type="submit" class="inline-send">Send</button>
+            </form>` : ''}
           </div>
         </div>
       </div>
@@ -1062,6 +1144,18 @@
       chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        sendChatMessage(text);
+      });
+    }
+
+    const inlineForm = document.getElementById('inline-compose');
+    if (inlineForm) {
+      inlineForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('inline-chat-input');
         const text = input.value.trim();
         if (!text) return;
         input.value = '';

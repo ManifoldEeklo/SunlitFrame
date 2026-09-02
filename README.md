@@ -65,16 +65,19 @@ the server the whole time.
   `<script>`), remembered per-device in `localStorage`. Treat the URL
   as semi-private to your group.
 - **Messaging**: one shared group chat only — there's no 1:1 messaging.
-  The chat bubble (bottom-right) opens the group thread. Messages sync
-  via polling every 3 seconds, with an immediate refresh whenever the
-  panel opens, and again the instant the page regains focus/visibility
-  (mobile browsers can pause timers while backgrounded, so this keeps
-  things from feeling "missed"). Unread messages show a small red dot
-  on the bubble. History is capped at the most recent 200 messages.
+  You can send from a single-line box right in the header (under the
+  presence names), or from the floating chat bubble (bottom-right)
+  which shows the full history. Messages sync via polling every 3
+  seconds, with an immediate refresh whenever the panel opens, and
+  again the instant the page regains focus/visibility (mobile browsers
+  can pause timers while backgrounded, so this keeps things from
+  feeling "missed"). History is capped at the most recent 200 messages.
 - **Incoming message banner**: when someone else sends a message and
-  you're not already looking at the chat, a small banner slides in at
-  the top of the screen (logo, sender, message) for 3 seconds. Tapping
-  it opens the chat; otherwise it dismisses itself automatically.
+  you're not already looking at the chat, a bold, fully opaque banner
+  drops down from the top of the screen (roughly 20% of the screen
+  height, full width) with the logo, sender, and message, plus a short
+  two-tone chime. It stays for 3 seconds — tap it to open the chat, or
+  let it slide back up on its own.
 - **Presence dots**: the three names in the header each show a small
   green/red dot based on a lightweight heartbeat (every 8 seconds,
   considered "online" if seen within the last 20 seconds). This is
