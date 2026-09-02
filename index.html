@@ -3,20 +3,22 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sunlit Frames — Vacation Photo Contest</title>
+<title>SummerContest — Vacation Photo Contest</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   #app-root {
-    --ink: #1c2b28;
-    --teal: #0f3d3e;
-    --sand: #f1e8d6;
+    --ink: #eef1ea;
+    --ink-dim: rgba(238,241,234,0.62);
+    --page-bg: #0a1615;
+    --panel: #0f2422;
+    --panel-2: #14302d;
     --paper: #fffdf7;
-    --coral: #ff6b4a;
-    --line: rgba(15,61,62,0.16);
+    --coral: #ff8a5c;
+    --line: rgba(238,241,234,0.14);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--ink);
-    background: var(--sand);
+    background: var(--page-bg);
     min-height: 100vh;
     padding: 0 0 60px 0;
     line-height: 1.45;
@@ -27,56 +29,74 @@
 
   /* ---- Header ---- */
   .contest-header {
-    background: var(--teal);
-    color: var(--sand);
+    background: var(--panel);
+    color: var(--ink);
     padding: 36px 24px 30px;
     position: relative;
     overflow: hidden;
+    border-bottom: 1px solid var(--line);
   }
   .contest-header::after {
     content: "";
     position: absolute;
     right: -60px; top: -60px;
-    width: 220px; height: 220px;
+    width: 260px; height: 260px;
     border-radius: 50%;
     background: var(--coral);
-    opacity: 0.14;
+    opacity: 0.10;
   }
-  .header-inner { max-width: 880px; margin: 0 auto; position: relative; }
+  .header-inner {
+    max-width: 880px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header-text { flex: 1 1 340px; min-width: 260px; }
+  .beach-art { flex: 0 0 auto; width: 168px; height: 150px; }
+  .beach-art svg { width: 100%; height: 100%; display: block; }
   .eyebrow-stamp {
     display: inline-block;
-    border: 1.5px solid rgba(241,232,214,0.55);
+    border: 1.5px solid rgba(238,241,234,0.35);
     border-radius: 3px;
     padding: 4px 10px;
     font-size: 11.5px;
     letter-spacing: 0.03em;
-    color: rgba(241,232,214,0.85);
+    color: rgba(238,241,234,0.75);
     transform: rotate(-2deg);
     margin-bottom: 14px;
   }
-  .contest-title { font-size: 40px; font-weight: 500; margin: 0 0 10px 0; letter-spacing: 0.2px; }
-  .contest-sub { font-size: 15.5px; max-width: 480px; color: rgba(241,232,214,0.82); margin: 0 0 22px 0; }
-  .header-meta { display: flex; gap: 28px; flex-wrap: wrap; border-top: 1px solid rgba(241,232,214,0.25); padding-top: 18px; }
-  .meta-item .meta-label { font-size: 11px; color: rgba(241,232,214,0.6); margin-bottom: 3px; }
-  .meta-item .meta-value { font-size: 17px; font-family: Georgia, serif; }
+  .contest-title { font-size: 40px; font-weight: 500; margin: 0 0 10px 0; letter-spacing: 0.2px; color: var(--ink); }
+  .contest-sub { font-size: 15.5px; max-width: 440px; color: var(--ink-dim); margin: 0 0 22px 0; }
+  .header-meta { display: flex; gap: 28px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 18px; }
+  .meta-item .meta-label { font-size: 11px; color: var(--ink-dim); margin-bottom: 3px; }
+  .meta-item .meta-value { font-size: 17px; font-family: Georgia, serif; color: var(--ink); }
   .meta-value.coral { color: var(--coral); }
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column-reverse; }
+    .beach-art { width: 140px; height: 124px; }
+  }
 
   /* ---- User bar ---- */
   .user-bar {
     max-width: 880px; margin: 0 auto; padding: 18px 24px 0;
     display: flex; justify-content: flex-end; align-items: center; gap: 10px;
-    font-size: 13.5px; color: var(--teal);
+    font-size: 13.5px; color: var(--ink-dim);
   }
-  .user-bar button { background: none; border: none; color: var(--teal); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 0; }
+  .user-bar strong { color: var(--ink); }
+  .user-bar button { background: none; border: none; color: var(--coral); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 0; }
 
   /* ---- Sections ---- */
   .section { max-width: 880px; margin: 0 auto; padding: 34px 24px 0; }
   .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; gap: 10px; }
-  .section-title { font-size: 24px; margin: 0; }
-  .section-note { font-size: 13px; color: rgba(28,43,40,0.55); }
-  .upload-btn { background: var(--coral); color: #fff; border: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; cursor: pointer; margin-top: 14px; }
-  .upload-btn:disabled { background: #c9c1ab; cursor: not-allowed; }
-  .upload-hint { font-size: 12.5px; color: rgba(28,43,40,0.55); margin-top: 8px; }
+  .section-title { font-size: 24px; margin: 0; color: var(--ink); }
+  .section-note { font-size: 13px; color: var(--ink-dim); }
+  .upload-btn { background: var(--coral); color: #1c1006; border: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 14px; }
+  .upload-btn:disabled { background: #3a4644; color: rgba(238,241,234,0.4); cursor: not-allowed; }
+  .upload-hint { font-size: 12.5px; color: var(--ink-dim); margin-top: 8px; }
 
   /* ---- Grid & polaroid cards ---- */
   .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 18px; margin-top: 22px; }
@@ -86,28 +106,28 @@
   .photo-owner-tag { position: absolute; bottom: 8px; left: 10px; font-size: 11px; color: rgba(28,43,40,0.6); }
   .delete-btn {
     position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%;
-    background: var(--teal); color: var(--sand); border: 2px solid var(--paper); font-size: 13px; line-height: 1;
+    background: var(--panel-2); color: var(--ink); border: 2px solid var(--paper); font-size: 13px; line-height: 1;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
-  .delete-btn:hover { background: var(--coral); }
-  .empty-state { margin-top: 18px; padding: 26px; border: 1px dashed var(--line); color: rgba(28,43,40,0.55); font-size: 13.5px; }
+  .delete-btn:hover { background: var(--coral); color: #1c1006; }
+  .empty-state { margin-top: 18px; padding: 26px; border: 1px dashed var(--line); color: var(--ink-dim); font-size: 13.5px; }
 
   /* ---- Lightbox ---- */
-  .lightbox { position: fixed; inset: 0; background: rgba(10,20,20,0.86); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
-  .lightbox img { max-width: 90vw; max-height: 78vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-  .lightbox-caption { position: absolute; bottom: 26px; color: var(--sand); font-size: 14px; text-align: center; width: 100%; left: 0; }
-  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--sand); font-size: 22px; cursor: pointer; }
+  .lightbox { position: fixed; inset: 0; background: rgba(4,10,10,0.92); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
+  .lightbox img { max-width: 90vw; max-height: 78vh; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .lightbox-caption { position: absolute; bottom: 26px; color: var(--ink); font-size: 14px; text-align: center; width: 100%; left: 0; }
+  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--ink); font-size: 22px; cursor: pointer; }
 
   /* ---- Name modal ---- */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(10,20,20,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-  .modal-box { background: var(--paper); padding: 32px 30px; max-width: 360px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
-  .modal-box h2 { margin: 0 0 8px 0; font-size: 21px; }
-  .modal-box p { font-size: 13.5px; color: rgba(28,43,40,0.65); margin: 0 0 18px 0; }
-  .modal-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); font-size: 14px; margin-bottom: 14px; background: #fff; font-family: inherit; }
-  .modal-box button.primary { background: var(--teal); color: var(--sand); border: none; padding: 10px 18px; font-size: 14px; cursor: pointer; width: 100%; }
-  .modal-error { font-size: 12.5px; color: #b23b2e; margin-top: -6px; margin-bottom: 12px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(4,10,10,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-box { background: var(--panel); padding: 32px 30px; max-width: 360px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5); border: 1px solid var(--line); }
+  .modal-box h2 { margin: 0 0 8px 0; font-size: 21px; color: var(--ink); }
+  .modal-box p { font-size: 13.5px; color: var(--ink-dim); margin: 0 0 18px 0; }
+  .modal-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); font-size: 14px; margin-bottom: 14px; background: var(--page-bg); color: var(--ink); font-family: inherit; }
+  .modal-box button.primary { background: var(--coral); color: #1c1006; border: none; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
+  .modal-error { font-size: 12.5px; color: #ff8080; margin-top: -6px; margin-bottom: 12px; }
 
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sand); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
 
   @media (max-width: 520px) {
     .contest-title { font-size: 30px; }
@@ -153,6 +173,45 @@
   async function redisDel(key) { return redisCmd(['DEL', key]); }
 
   function fmtDate(d) { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+
+  function beachArtSvg() {
+    return `
+      <svg viewBox="0 0 200 170" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#16234a"/>
+            <stop offset="55%" stop-color="#7a4a5e"/>
+            <stop offset="100%" stop-color="#ffb37a"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="200" height="170" fill="url(#skyGrad)"/>
+        <circle cx="152" cy="92" r="24" fill="#ffd27a" opacity="0.92"/>
+        <path d="M0,138 Q50,118 100,130 T200,118 L200,170 L0,170 Z" fill="#d8b06a"/>
+        <path d="M0,150 Q60,138 120,148 T200,140 L200,170 L0,170 Z" fill="#c99a52"/>
+        <g transform="translate(34,90)">
+          <path d="M8,54 L50,18" stroke="#5b3a22" stroke-width="4" stroke-linecap="round"/>
+          <path d="M62,54 L20,18" stroke="#5b3a22" stroke-width="4" stroke-linecap="round"/>
+          <line x1="8" y1="54" x2="62" y2="54" stroke="#5b3a22" stroke-width="4" stroke-linecap="round"/>
+          <path d="M18,18 L52,18 L60,40 L10,40 Z" fill="#ff8a5c" stroke="#5b3a22" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M18,18 L11,-22 L41,-22 L52,18 Z" fill="#ffb98c" stroke="#5b3a22" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="16" y1="2" x2="46" y2="2" stroke="#eef1ea" stroke-width="3"/>
+          <line x1="14" y1="-10" x2="44" y2="-10" stroke="#eef1ea" stroke-width="3"/>
+        </g>
+        <g transform="translate(118,76)">
+          <line x1="0" y1="0" x2="0" y2="56" stroke="#7c5a33" stroke-width="3" stroke-linecap="round"/>
+          <path d="M0,3 Q14,-2 28,3 L28,23 Q14,18 0,23 Z" fill="#aa151b"/>
+          <path d="M0,9 Q14,5 28,9 L28,17 Q14,13 0,17 Z" fill="#f1bf00"/>
+        </g>
+        <g transform="translate(150,84)">
+          <line x1="0" y1="0" x2="0" y2="50" stroke="#7c5a33" stroke-width="3" stroke-linecap="round"/>
+          <path d="M0,3 Q4.5,-2 9,3 L9,21 Q4.5,17 0,21 Z" fill="#0055a4"/>
+          <path d="M9,3 Q13.5,-2 18,3 L18,20 Q13.5,16 9,21 Z" fill="#ffffff"/>
+          <path d="M18,3 Q22.5,-2 27,3 L27,19 Q22.5,15 18,20 Z" fill="#ef4135"/>
+        </g>
+      </svg>
+    `;
+  }
+
   function registrationOpen() { return new Date() < REG_DEADLINE; }
 
   function showToast(msg) {
@@ -272,23 +331,26 @@
     root.innerHTML = `
       <div class="contest-header">
         <div class="header-inner">
-          <div class="eyebrow-stamp">Photo contest</div>
-          <h1 class="contest-title headline-font">Sunlit Frames</h1>
-          <p class="contest-sub">Share your most creative and beautiful vacation shot. One winner takes the prize — revealed once voting closes.</p>
-          <div class="header-meta">
-            <div class="meta-item">
-              <div class="meta-label">Entries close</div>
-              <div class="meta-value">${fmtDate(REG_DEADLINE)}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">${openReg ? 'Days left to enter' : 'Entries are closed'}</div>
-              <div class="meta-value coral">${openReg ? daysLeft(REG_DEADLINE) : '—'}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Winner announced</div>
-              <div class="meta-value">${fmtDate(WINNER_DATE)}</div>
+          <div class="header-text">
+            <div class="eyebrow-stamp">Photo contest</div>
+            <h1 class="contest-title headline-font">SummerContest</h1>
+            <p class="contest-sub">Share your most creative and beautiful vacation shot. One winner takes the prize — revealed once voting closes.</p>
+            <div class="header-meta">
+              <div class="meta-item">
+                <div class="meta-label">Entries close</div>
+                <div class="meta-value">${fmtDate(REG_DEADLINE)}</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">${openReg ? 'Days left to enter' : 'Entries are closed'}</div>
+                <div class="meta-value coral">${openReg ? daysLeft(REG_DEADLINE) : '—'}</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Winner announced</div>
+                <div class="meta-value">${fmtDate(WINNER_DATE)}</div>
+              </div>
             </div>
           </div>
+          <div class="beach-art" aria-hidden="true">${beachArtSvg()}</div>
         </div>
       </div>
 
