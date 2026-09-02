@@ -12,16 +12,29 @@ const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'RPUSH', 'LRANGE'
 const INDEX_KEY = 'contest:index';
 const GROUP_CHAT_KEY = 'chat:group';
 const MAX_VALUE_BYTES = 3 * 1024 * 1024; // 3MB safety cap per value
-const FIXED_USERS = ['Rune', 'Lander', 'Zoë'];
-const VALID_PRESENCE_KEYS = new Set(FIXED_USERS.map(u => 'presence:' + u));
 
 const LIST_COMMANDS = new Set(['RPUSH', 'LRANGE', 'LTRIM']);
 
-// GET/SET/DEL: the photo gallery data, plus each user's presence heartbeat.
-function isDataKeyAllowed(key) {
-  return key === INDEX_KEY
-    || (typeof key === 'string' && key.startsWith('photo:'))
-    || VALID_PRESENCE_KEYS.has(key);
+// The user roster itself is dynamic now (added/removed via the Admin panel,
+// stored under app:users and managed exclusively by api/admin.js — writes
+// to that key are intentionally NOT allowed here, only reads). So presence
+// keys are validated by shape rather than against a fixed list: it just
+// has to look like a reasonable "presence:<name>" heartbeat key.
+function isPresenceKeyAllowed(key) {
+  if (typeof key !== 'string' || !key.startsWith('presence:')) return false;
+  const name = key.slice('presence:'.length);
+  return name.length > 0 && name.length <= 30 && !name.includes(':');
+}
+
+// GET/SET/DEL: the photo gallery data, each user's presence heartbeat, and
+// read-only access to the user roster (writes to app:users go through the
+// password-gated /api/admin endpoint instead).
+function isDataKeyAllowed(key, cmdName) {
+  if (key === INDEX_KEY) return true;
+  if (typeof key === 'string' && key.startsWith('photo:')) return true;
+  if (isPresenceKeyAllowed(key)) return true;
+  if (key === 'app:users' && cmdName === 'GET') return true;
+  return false;
 }
 // RPUSH/LRANGE/LTRIM: only the single shared group chat thread — there's no
 // 1:1 messaging, everyone sends to everyone.
@@ -53,7 +66,7 @@ module.exports = async (req, res) => {
   if (cmdName !== 'PING') {
     const key = command[1];
     const isListCmd = LIST_COMMANDS.has(cmdName);
-    const keyOk = isListCmd ? isChatKeyAllowed(key) : isDataKeyAllowed(key);
+    const keyOk = isListCmd ? isChatKeyAllowed(key) : isDataKeyAllowed(key, cmdName);
     if (!keyOk) {
       res.status(403).json({ error: 'Key not allowed' });
       return;

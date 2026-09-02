@@ -56,14 +56,26 @@ the server the whole time.
 - `api/redis.js` — a serverless function that forwards a small whitelist
   of commands to Upstash using the secret token:
   - `GET` / `SET` / `DEL` for `contest:index`, `photo:*`, and each
-    user's `presence:*` heartbeat.
+    user's `presence:*` heartbeat, plus read-only `GET` on `app:users`.
   - `RPUSH` / `LRANGE` / `LTRIM` for `chat:group` only — lists give
     atomic appends, so two people sending at the same instant can't
     overwrite each other.
-- There's no login system — everyone picks from three fixed names
-  (**Rune, Lander, Zoë**, set in `FIXED_USERS` near the top of the
-  `<script>`), remembered per-device in `localStorage`. Treat the URL
-  as semi-private to your group.
+- `api/admin.js` — a separate serverless function that manages the user
+  roster (`app:users` in Redis). Reading the list is public; adding or
+  removing a user requires the admin password, checked **server-side**
+  here (never trust a client-only password check). The password is
+  `Admin123`, set as `ADMIN_PASSWORD` near the top of the file — change
+  it there if you want something else.
+- There's no login system beyond that — people pick their name from
+  whatever roster the admin has set up (seeded with **Rune, Lander,
+  Zoë, Jurgen** the first time), remembered per-device in
+  `localStorage`. Treat the URL as semi-private to your group.
+- **Admin panel**: a small "Admin" link at the very bottom of the page
+  opens a password-gated screen to add or remove people. Removing
+  someone doesn't delete their existing photos or messages — it just
+  stops them (or whoever's signed in as them) from picking that name
+  again, and if they're currently signed in on a device, that device
+  gets signed out immediately.
 - **Messaging**: one shared group chat only — there's no 1:1 messaging.
   You can send from a single-line box right in the header (under the
   presence names), or from the floating chat bubble (bottom-right)
