@@ -1,0 +1,9 @@
+{
+  "name": "sunlit-frames",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vacation photo contest app with an Upstash Redis backend, proxied through a Vercel serverless function.",
+  "dependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

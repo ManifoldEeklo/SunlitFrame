@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sunlit Frames — Vacation Photo Contest</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  #app-root {
+    --ink: #1c2b28;
+    --teal: #0f3d3e;
+    --sand: #f1e8d6;
+    --paper: #fffdf7;
+    --coral: #ff6b4a;
+    --line: rgba(15,61,62,0.16);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--sand);
+    min-height: 100vh;
+    padding: 0 0 60px 0;
+    line-height: 1.45;
+  }
+  #app-root .headline-font {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+
+  /* ---- Header ---- */
+  .contest-header {
+    background: var(--teal);
+    color: var(--sand);
+    padding: 36px 24px 30px;
+    position: relative;
+    overflow: hidden;
+  }
+  .contest-header::after {
+    content: "";
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: var(--coral);
+    opacity: 0.14;
+  }
+  .header-inner { max-width: 880px; margin: 0 auto; position: relative; }
+  .eyebrow-stamp {
+    display: inline-block;
+    border: 1.5px solid rgba(241,232,214,0.55);
+    border-radius: 3px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    letter-spacing: 0.03em;
+    color: rgba(241,232,214,0.85);
+    transform: rotate(-2deg);
+    margin-bottom: 14px;
+  }
+  .contest-title { font-size: 40px; font-weight: 500; margin: 0 0 10px 0; letter-spacing: 0.2px; }
+  .contest-sub { font-size: 15.5px; max-width: 480px; color: rgba(241,232,214,0.82); margin: 0 0 22px 0; }
+  .header-meta { display: flex; gap: 28px; flex-wrap: wrap; border-top: 1px solid rgba(241,232,214,0.25); padding-top: 18px; }
+  .meta-item .meta-label { font-size: 11px; color: rgba(241,232,214,0.6); margin-bottom: 3px; }
+  .meta-item .meta-value { font-size: 17px; font-family: Georgia, serif; }
+  .meta-value.coral { color: var(--coral); }
+
+  /* ---- User bar ---- */
+  .user-bar {
+    max-width: 880px; margin: 0 auto; padding: 18px 24px 0;
+    display: flex; justify-content: flex-end; align-items: center; gap: 10px;
+    font-size: 13.5px; color: var(--teal);
+  }
+  .user-bar button { background: none; border: none; color: var(--teal); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 0; }
+
+  /* ---- Sections ---- */
+  .section { max-width: 880px; margin: 0 auto; padding: 34px 24px 0; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; gap: 10px; }
+  .section-title { font-size: 24px; margin: 0; }
+  .section-note { font-size: 13px; color: rgba(28,43,40,0.55); }
+  .upload-btn { background: var(--coral); color: #fff; border: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; cursor: pointer; margin-top: 14px; }
+  .upload-btn:disabled { background: #c9c1ab; cursor: not-allowed; }
+  .upload-hint { font-size: 12.5px; color: rgba(28,43,40,0.55); margin-top: 8px; }
+
+  /* ---- Grid & polaroid cards ---- */
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 18px; margin-top: 22px; }
+  .photo-card { background: var(--paper); padding: 8px 8px 30px 8px; box-shadow: 0 3px 10px rgba(15,61,62,0.18); position: relative; cursor: pointer; transition: transform 0.15s ease; }
+  .photo-card:hover { transform: translateY(-3px) rotate(0deg) !important; }
+  .photo-card img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: #eee4cf; }
+  .photo-owner-tag { position: absolute; bottom: 8px; left: 10px; font-size: 11px; color: rgba(28,43,40,0.6); }
+  .delete-btn {
+    position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--teal); color: var(--sand); border: 2px solid var(--paper); font-size: 13px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .delete-btn:hover { background: var(--coral); }
+  .empty-state { margin-top: 18px; padding: 26px; border: 1px dashed var(--line); color: rgba(28,43,40,0.55); font-size: 13.5px; }
+
+  /* ---- Lightbox ---- */
+  .lightbox { position: fixed; inset: 0; background: rgba(10,20,20,0.86); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
+  .lightbox img { max-width: 90vw; max-height: 78vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .lightbox-caption { position: absolute; bottom: 26px; color: var(--sand); font-size: 14px; text-align: center; width: 100%; left: 0; }
+  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--sand); font-size: 22px; cursor: pointer; }
+
+  /* ---- Name modal ---- */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(10,20,20,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-box { background: var(--paper); padding: 32px 30px; max-width: 360px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+  .modal-box h2 { margin: 0 0 8px 0; font-size: 21px; }
+  .modal-box p { font-size: 13.5px; color: rgba(28,43,40,0.65); margin: 0 0 18px 0; }
+  .modal-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); font-size: 14px; margin-bottom: 14px; background: #fff; font-family: inherit; }
+  .modal-box button.primary { background: var(--teal); color: var(--sand); border: none; padding: 10px 18px; font-size: 14px; cursor: pointer; width: 100%; }
+  .modal-error { font-size: 12.5px; color: #b23b2e; margin-top: -6px; margin-bottom: 12px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sand); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
+
+  @media (max-width: 520px) {
+    .contest-title { font-size: 30px; }
+    .header-meta { gap: 18px; }
+  }
+</style>
+</head>
+<body>
+<div id="app-root"></div>
+
+<script>
+(function () {
+  const root = document.getElementById('app-root');
+  const REG_DEADLINE = new Date('2026-09-10T23:59:59');
+  const WINNER_DATE = new Date('2026-09-17T00:00:00');
+  const MAX_PHOTOS = 20;
+  const INDEX_KEY = 'contest:index';
+  const LS_NAME_KEY = 'sunlitframes_username';
+
+  let state = {
+    username: null,
+    index: [],
+    loading: true,
+    lightbox: null,
+    toastMsg: null,
+  };
+
+  // --- Backend: our own /api/redis serverless proxy (Upstash token stays server-side) ---
+  async function redisCmd(cmdArray) {
+    const res = await fetch('/api/redis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmdArray }),
+    });
+    let data;
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+    if (data.error) throw new Error(data.error);
+    return data.result;
+  }
+  async function redisGet(key) { return redisCmd(['GET', key]); }
+  async function redisSet(key, value) { return redisCmd(['SET', key, value]); }
+  async function redisDel(key) { return redisCmd(['DEL', key]); }
+
+  function fmtDate(d) { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+  function registrationOpen() { return new Date() < REG_DEADLINE; }
+
+  function showToast(msg) {
+    state.toastMsg = msg;
+    render();
+    setTimeout(() => { state.toastMsg = null; render(); }, 3200);
+  }
+
+  function loadUsername() {
+    try { state.username = localStorage.getItem(LS_NAME_KEY) || null; } catch (e) { state.username = null; }
+  }
+  function saveUsername(name) {
+    state.username = name;
+    try { localStorage.setItem(LS_NAME_KEY, name); } catch (e) {}
+    render();
+  }
+
+  async function loadIndex() {
+    try {
+      const raw = await redisGet(INDEX_KEY);
+      state.index = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      state.index = [];
+      showToast('Could not load the gallery: ' + e.message);
+    }
+  }
+
+  async function refreshAll() {
+    state.loading = true;
+    render();
+    await loadIndex();
+    state.loading = false;
+    render();
+  }
+
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1000;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+            else { width = Math.round(width * maxDim / height); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.68));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleUpload(files) {
+    if (!state.username) return;
+    const ownCount = state.index.filter(p => p.owner === state.username).length;
+    const remaining = MAX_PHOTOS - ownCount;
+    if (remaining <= 0) { showToast("You've reached the 20 photo limit."); return; }
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) showToast(`Only room for ${remaining} more — uploading the first ${remaining}.`);
+    for (const file of toUpload) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const dataUrl = await resizeImage(file);
+        const id = state.username.replace(/[^a-zA-Z0-9_-]/g, '') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        await redisSet('photo:' + id, dataUrl);
+        state.index.push({ id, owner: state.username, filename: file.name, uploadedAt: new Date().toISOString() });
+        await redisSet(INDEX_KEY, JSON.stringify(state.index));
+      } catch (e) {
+        showToast('Upload failed for ' + file.name + ': ' + e.message);
+      }
+    }
+    render();
+  }
+
+  async function handleDelete(photo) {
+    if (photo.owner !== state.username) return;
+    if (!confirm('Remove this photo from the contest?')) return;
+    try {
+      state.index = state.index.filter(p => p.id !== photo.id);
+      await redisSet(INDEX_KEY, JSON.stringify(state.index));
+      await redisDel('photo:' + photo.id);
+      render();
+    } catch (e) {
+      showToast('Could not remove photo: ' + e.message);
+    }
+  }
+
+  const photoDataCache = {};
+  async function getPhotoData(id) {
+    if (photoDataCache[id]) return photoDataCache[id];
+    try {
+      const val = await redisGet('photo:' + id);
+      photoDataCache[id] = val || null;
+      return photoDataCache[id];
+    } catch (e) { return null; }
+  }
+
+  function daysLeft(target) {
+    const ms = target - new Date();
+    return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  }
+
+  function render() {
+    const openReg = registrationOpen();
+    const myPhotos = state.username ? state.index.filter(p => p.owner === state.username) : [];
+    const otherPhotos = state.index.filter(p => !state.username || p.owner !== state.username);
+
+    root.innerHTML = `
+      <div class="contest-header">
+        <div class="header-inner">
+          <div class="eyebrow-stamp">Photo contest</div>
+          <h1 class="contest-title headline-font">Sunlit Frames</h1>
+          <p class="contest-sub">Share your most creative and beautiful vacation shot. One winner takes the prize — revealed once voting closes.</p>
+          <div class="header-meta">
+            <div class="meta-item">
+              <div class="meta-label">Entries close</div>
+              <div class="meta-value">${fmtDate(REG_DEADLINE)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">${openReg ? 'Days left to enter' : 'Entries are closed'}</div>
+              <div class="meta-value coral">${openReg ? daysLeft(REG_DEADLINE) : '—'}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Winner announced</div>
+              <div class="meta-value">${fmtDate(WINNER_DATE)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${state.username ? `
+      <div class="user-bar">
+        Signed in as <strong>${escapeHtml(state.username)}</strong>
+        <button id="switch-user-btn">switch</button>
+      </div>` : ''}
+
+      <div class="section">
+        <div class="section-head">
+          <h2 class="section-title headline-font">My entries</h2>
+          <div class="section-note">${myPhotos.length} / ${MAX_PHOTOS}</div>
+        </div>
+        ${openReg ? `
+          <input type="file" id="file-input" accept="image/*" multiple style="display:none" />
+          <button class="upload-btn" id="upload-trigger" ${myPhotos.length >= MAX_PHOTOS ? 'disabled' : ''}>
+            ${myPhotos.length >= MAX_PHOTOS ? 'Limit reached' : 'Add photos'}
+          </button>
+          <div class="upload-hint">Up to ${MAX_PHOTOS} photos. Entries close ${fmtDate(REG_DEADLINE)}.</div>
+        ` : `<div class="upload-hint">Registration is closed — no new uploads, but you can still remove your own photos.</div>`}
+        ${state.loading ? `<div class="empty-state">Loading your photos…</div>` :
+          myPhotos.length === 0 ? `<div class="empty-state">No entries yet. Add your first vacation shot above.</div>` :
+          `<div class="photo-grid">${myPhotos.map((p, i) => photoCardHtml(p, i, true)).join('')}</div>`
+        }
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2 class="section-title headline-font">All entries</h2>
+          <div class="section-note">${state.index.length} total</div>
+        </div>
+        ${state.loading ? `<div class="empty-state">Loading gallery…</div>` :
+          otherPhotos.length === 0 ? `<div class="empty-state">No other entries yet.</div>` :
+          `<div class="photo-grid">${otherPhotos.map((p, i) => photoCardHtml(p, i, false)).join('')}</div>`
+        }
+      </div>
+
+      ${!state.username ? nameModalHtml() : ''}
+      ${state.lightbox ? lightboxHtml() : ''}
+      ${state.toastMsg ? `<div class="toast">${escapeHtml(state.toastMsg)}</div>` : ''}
+    `;
+
+    attachHandlers();
+    hydrateImages();
+  }
+
+  function photoCardHtml(photo, i, isOwn) {
+    const rotate = (i % 2 === 0 ? -1.5 : 1.5) + (i % 3 === 0 ? 0.5 : 0);
+    return `
+      <div class="photo-card" style="transform: rotate(${rotate}deg)" data-photo-id="${photo.id}">
+        ${isOwn ? `<button class="delete-btn" data-delete-id="${photo.id}" title="Remove">✕</button>` : ''}
+        <img data-img-id="${photo.id}" alt="Vacation entry" />
+        <div class="photo-owner-tag">${escapeHtml(photo.owner)}</div>
+      </div>
+    `;
+  }
+
+  function nameModalHtml() {
+    return `
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h2 class="headline-font">Join the contest</h2>
+          <p>Enter a name so we know which photos are yours.</p>
+          <input type="text" id="name-input" placeholder="Your name" maxlength="30" />
+          <button class="primary" id="name-submit">Continue</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function lightboxHtml() {
+    const p = state.lightbox;
+    return `
+      <div class="lightbox" id="lightbox-overlay">
+        <button class="lightbox-close" id="lightbox-close">✕</button>
+        <img id="lightbox-img" alt="Vacation entry" />
+        <div class="lightbox-caption">${escapeHtml(p.owner)}</div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+  }
+
+  async function hydrateImages() {
+    const imgs = root.querySelectorAll('img[data-img-id]');
+    imgs.forEach(async (imgEl) => {
+      const id = imgEl.getAttribute('data-img-id');
+      const data = await getPhotoData(id);
+      if (data) imgEl.src = data;
+    });
+    const lb = document.getElementById('lightbox-img');
+    if (lb && state.lightbox) {
+      const data = await getPhotoData(state.lightbox.id);
+      if (data) lb.src = data;
+    }
+  }
+
+  function attachHandlers() {
+    const switchBtn = document.getElementById('switch-user-btn');
+    if (switchBtn) switchBtn.onclick = () => {
+      state.username = null;
+      try { localStorage.removeItem(LS_NAME_KEY); } catch (e) {}
+      render();
+    };
+
+    const nameSubmit = document.getElementById('name-submit');
+    if (nameSubmit) {
+      const input = document.getElementById('name-input');
+      const submit = () => { const val = input.value.trim(); if (val) saveUsername(val); };
+      nameSubmit.onclick = submit;
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+      input.focus();
+    }
+
+    const uploadTrigger = document.getElementById('upload-trigger');
+    const fileInput = document.getElementById('file-input');
+    if (uploadTrigger && fileInput) {
+      uploadTrigger.onclick = () => fileInput.click();
+      fileInput.onchange = (e) => { if (e.target.files.length) handleUpload(e.target.files); };
+    }
+
+    root.querySelectorAll('[data-delete-id]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-delete-id');
+        const photo = state.index.find(p => p.id === id);
+        if (photo) handleDelete(photo);
+      };
+    });
+
+    root.querySelectorAll('.photo-card').forEach(card => {
+      card.onclick = () => {
+        const id = card.getAttribute('data-photo-id');
+        const photo = state.index.find(p => p.id === id);
+        if (photo) { state.lightbox = photo; render(); }
+      };
+    });
+
+    const lbClose = document.getElementById('lightbox-close');
+    const lbOverlay = document.getElementById('lightbox-overlay');
+    if (lbClose) lbClose.onclick = () => { state.lightbox = null; render(); };
+    if (lbOverlay) lbOverlay.onclick = (e) => { if (e.target === lbOverlay) { state.lightbox = null; render(); } };
+  }
+
+  (async function init() {
+    loadUsername();
+    render();
+    await refreshAll();
+  })();
+})();
+</script>
+</body>
+</html>
