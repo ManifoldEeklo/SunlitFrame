@@ -2,11 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#0a1615" />
 <title>SummerContest — Vacation Photo Contest</title>
 <style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
   #app-root {
     --ink: #eef1ea;
     --ink-dim: rgba(238,241,234,0.62);
@@ -19,8 +35,12 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--ink);
     background: var(--page-bg);
-    min-height: 100vh;
-    padding: 0 0 60px 0;
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 calc(60px + env(safe-area-inset-bottom)) 0;
     line-height: 1.45;
   }
   #app-root .headline-font {
@@ -31,7 +51,7 @@
   .contest-header {
     background: var(--panel);
     color: var(--ink);
-    padding: 16px 24px 14px;
+    padding: calc(16px + env(safe-area-inset-top)) 24px 14px;
     position: relative;
     overflow: hidden;
     border-bottom: 1px solid var(--line);
@@ -149,7 +169,7 @@
     font-size: 16px;
   }
 
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
+  .toast { position: fixed; bottom: calc(22px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
 
   @media (max-width: 520px) {
     .header-meta { gap: 14px; }
@@ -208,7 +228,7 @@
   /* ---- Chat widget ---- */
   .chat-fab {
     position: fixed;
-    bottom: 20px; right: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom)); right: calc(20px + env(safe-area-inset-right));
     width: 52px; height: 52px;
     border-radius: 50%;
     background: var(--coral);
@@ -230,7 +250,7 @@
   }
   .chat-panel {
     position: fixed;
-    bottom: 82px; right: 20px;
+    bottom: calc(82px + env(safe-area-inset-bottom)); right: calc(20px + env(safe-area-inset-right));
     width: min(92vw, 340px);
     height: min(70vh, 460px);
     background: var(--panel);
@@ -308,7 +328,7 @@
     color: var(--ink);
     border-radius: 6px;
     padding: 8px 10px;
-    font-size: 13.5px;
+    font-size: 16px;
     font-family: inherit;
   }
   .chat-send {
@@ -322,9 +342,43 @@
     cursor: pointer;
   }
   @media (max-width: 420px) {
-    .chat-panel { right: 10px; bottom: 78px; width: calc(100vw - 20px); }
-    .chat-fab { right: 14px; }
+    .chat-panel { right: calc(10px + env(safe-area-inset-right)); bottom: calc(78px + env(safe-area-inset-bottom)); width: calc(100vw - 20px - env(safe-area-inset-right)); }
+    .chat-fab { right: calc(14px + env(safe-area-inset-right)); }
   }
+
+  /* ---- Incoming message notification ---- */
+  .msg-notify-overlay {
+    position: fixed; inset: 0;
+    z-index: 2200;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4,10,10,0.45);
+    padding: 24px;
+    cursor: pointer;
+    animation: msgNotifyFadeIn 0.2s ease;
+  }
+  .msg-notify-box {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 26px 22px;
+    max-width: min(84vw, 300px);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+    text-align: center;
+    animation: msgNotifyPop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  .msg-notify-logo { width: 64px; height: 54px; margin: 0 auto 10px; }
+  .msg-notify-logo svg { width: 100%; height: 100%; display: block; border-radius: 6px; }
+  .msg-notify-from { font-size: 13px; font-weight: 700; color: var(--coral); margin-bottom: 4px; }
+  .msg-notify-text {
+    font-size: 14.5px;
+    color: var(--ink);
+    word-break: break-word;
+    max-height: 4.6em;
+    overflow: hidden;
+  }
+  .msg-notify-hint { font-size: 11px; color: var(--ink-dim); margin-top: 10px; }
+  @keyframes msgNotifyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes msgNotifyPop { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
 </style>
 </head>
 <body>
@@ -335,6 +389,7 @@
   <div class="splash-progress-track"><div class="splash-progress-fill"></div></div>
 </div>
 <div id="app-root"></div>
+<div id="msg-notify-root"></div>
 
 <script>
 (function () {
@@ -345,7 +400,7 @@
   const INDEX_KEY = 'contest:index';
   const LS_NAME_KEY = 'sunlitframes_username';
   const FIXED_USERS = ['Rune', 'Lander', 'Zoë'];
-  const CHAT_POLL_MS = 5000;
+  const CHAT_POLL_MS = 3000;
   const CHAT_HISTORY_LIMIT = 200;
 
   let state = {
@@ -360,6 +415,7 @@
     chats: {},        // threadKey -> array of {id, from, text, ts}
     lastSeen: {},      // threadKey -> timestamp of the last message the user has viewed
     chatPollHandle: null,
+    chatSeenBaseline: {}, // threadKey -> id of the last message already accounted for (notified or was there at load)
   };
 
   // --- Backend: our own /api/redis serverless proxy (Upstash token stays server-side) ---
@@ -385,8 +441,14 @@
   function currentThreadKey() {
     return state.chatTab === 'group' ? 'chat:group' : dmKeyFor(state.username, state.chatTab);
   }
+  function relevantThreads() {
+    return [
+      { tabKey: 'group', threadKey: 'chat:group' },
+      ...otherUsersList().map(o => ({ tabKey: o, threadKey: dmKeyFor(state.username, o) })),
+    ];
+  }
   function allRelevantThreadKeys() {
-    return ['chat:group', ...otherUsersList().map(o => dmKeyFor(state.username, o))];
+    return relevantThreads().map(t => t.threadKey);
   }
 
   function lastSeenStorageKey() { return 'summercontest_lastseen_' + state.username; }
@@ -426,11 +488,72 @@
 
   async function pollChatOnce() {
     if (!state.username) return;
-    for (const key of allRelevantThreadKeys()) {
-      const msgs = await fetchThread(key);
-      if (msgs) state.chats[key] = msgs;
+    for (const { tabKey, threadKey } of relevantThreads()) {
+      const msgs = await fetchThread(threadKey);
+      if (msgs) {
+        checkForIncomingNotification(tabKey, threadKey, msgs);
+        state.chats[threadKey] = msgs;
+      }
     }
     updateChatDOM();
+  }
+
+  function checkForIncomingNotification(tabKey, threadKey, newMsgs) {
+    const newLastId = newMsgs.length ? newMsgs[newMsgs.length - 1].id : null;
+    const hasBaseline = Object.prototype.hasOwnProperty.call(state.chatSeenBaseline, threadKey);
+    if (!hasBaseline) {
+      // first poll for this thread this session — just record where we stand,
+      // don't pop up a notification for a backlog of already-existing messages
+      // (this also correctly handles an empty thread, so the *next* poll can
+      // tell a genuinely new message apart from "still empty").
+      state.chatSeenBaseline[threadKey] = newLastId;
+      return;
+    }
+    if (newLastId === state.chatSeenBaseline[threadKey]) return; // nothing new
+    state.chatSeenBaseline[threadKey] = newLastId;
+    if (!newLastId) return; // thread went from having messages to empty — nothing to notify
+    const newLast = newMsgs[newMsgs.length - 1];
+    if (newLast.from === state.username) return; // our own message, already shown optimistically
+    const viewingThisThread = state.chatOpen && currentThreadKey() === threadKey;
+    if (viewingThisThread) return; // already looking at this conversation
+    showIncomingNotification(tabKey, threadKey, newLast);
+  }
+
+  let notifyDismissTimer = null;
+  function dismissIncomingNotification() {
+    clearTimeout(notifyDismissTimer);
+    const container = document.getElementById('msg-notify-root');
+    if (container) container.innerHTML = '';
+  }
+  function showIncomingNotification(tabKey, threadKey, msg) {
+    const container = document.getElementById('msg-notify-root');
+    if (!container) return;
+    clearTimeout(notifyDismissTimer);
+    container.innerHTML = `
+      <div class="msg-notify-overlay" id="msg-notify-overlay">
+        <div class="msg-notify-box">
+          <div class="msg-notify-logo">${beachArtSvg(false)}</div>
+          <div class="msg-notify-from">${escapeHtml(msg.from)}</div>
+          <div class="msg-notify-text">${escapeHtml(msg.text)}</div>
+          <div class="msg-notify-hint">Tap to open chat</div>
+        </div>
+      </div>
+    `;
+    const overlay = document.getElementById('msg-notify-overlay');
+    overlay.onclick = () => {
+      dismissIncomingNotification();
+      openChatToThread(tabKey, threadKey);
+    };
+    notifyDismissTimer = setTimeout(dismissIncomingNotification, 3000);
+  }
+
+  function openChatToThread(tabKey, threadKey) {
+    state.chatTab = tabKey;
+    state.chatOpen = true;
+    render();
+    scrollChatToBottom();
+    focusChatInput();
+    pollChatOnce().then(scrollChatToBottom);
   }
 
   function stopChatPolling() {
@@ -441,6 +564,21 @@
     pollChatOnce();
     state.chatPollHandle = setInterval(pollChatOnce, CHAT_POLL_MS);
   }
+
+  function pollNowIfActive() {
+    if (state.username) pollChatOnce();
+  }
+  // Mobile browsers throttle or fully pause setInterval while the tab is
+  // backgrounded or the screen is locked, so a poll can silently stall for
+  // much longer than CHAT_POLL_MS. Force an immediate catch-up poll the
+  // moment the page becomes visible/focused again (or is restored from
+  // iOS Safari's back-forward cache) so messages/notifications never feel
+  // "missed".
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pollNowIfActive();
+  });
+  window.addEventListener('focus', pollNowIfActive);
+  window.addEventListener('pageshow', pollNowIfActive);
 
   async function sendChatMessage(text) {
     const clean = text.trim().slice(0, 500);
@@ -600,6 +738,8 @@
     state.chatOpen = false;
     state.chatTab = 'group';
     state.chats = {};
+    state.chatSeenBaseline = {};
+    dismissIncomingNotification();
     try { localStorage.setItem(LS_NAME_KEY, name); } catch (e) {}
     loadLastSeen();
     startChatPolling();
