@@ -151,6 +151,15 @@ the server the whole time.
   per photo. This shares the same push-sending code as chat messages
   (`lib/push.js`) and needs the same `VAPID_*` environment variables —
   if those aren't set, uploads still work fine, there's just no push.
+- **Star ratings**: tap any photo to open it, then tap 1-5 stars to
+  rate it. Anyone can rate any photo (including their own). The
+  average shows as a small badge in the bottom-right corner of each
+  photo card once it has at least one rating, and as a live number
+  inside the lightbox. Stored as a Redis hash (`rating:<photoId>` ->
+  `{username: 1-5}`), which makes each person's rating an atomic write
+  — two people rating the same photo at the same instant can't
+  overwrite each other's score. Deleting a photo also removes its
+  ratings.
 - Photos are resized/compressed client-side before upload to keep them
   small and fast to sync.
 - Registration closes 2026-09-10, winner announced 2026-09-17 — edit

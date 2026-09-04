@@ -8,12 +8,14 @@
 // and only allows them to touch this app's own keys, so it can't be
 // used as an open Redis proxy even though the endpoint itself is public.
 
-const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'LRANGE']);
+const ALLOWED_COMMANDS = new Set(['GET', 'SET', 'DEL', 'PING', 'LRANGE', 'HSET', 'HGETALL']);
 const INDEX_KEY = 'contest:index';
 const GROUP_CHAT_KEY = 'chat:group';
 const MAX_VALUE_BYTES = 3 * 1024 * 1024; // 3MB safety cap per value
+const MAX_FIELD_LEN = 30;
 
 const LIST_COMMANDS = new Set(['LRANGE']);
+const HASH_COMMANDS = new Set(['HSET', 'HGETALL']);
 
 // The user roster itself is dynamic now (added/removed via the Admin panel,
 // stored under app:users and managed exclusively by api/admin.js — writes
@@ -23,7 +25,11 @@ const LIST_COMMANDS = new Set(['LRANGE']);
 function isPresenceKeyAllowed(key) {
   if (typeof key !== 'string' || !key.startsWith('presence:')) return false;
   const name = key.slice('presence:'.length);
-  return name.length > 0 && name.length <= 30 && !name.includes(':');
+  return name.length > 0 && name.length <= MAX_FIELD_LEN && !name.includes(':');
+}
+// rating:<photoId> — a Redis hash of {username: 1-5} for one photo.
+function isRatingKeyAllowed(key) {
+  return typeof key === 'string' && key.startsWith('rating:') && key.length > 'rating:'.length;
 }
 
 // GET/SET/DEL: the photo gallery data, each user's presence heartbeat, and
@@ -34,6 +40,7 @@ function isDataKeyAllowed(key, cmdName) {
   if (typeof key === 'string' && key.startsWith('photo:')) return true;
   if (isPresenceKeyAllowed(key)) return true;
   if (key === 'app:users' && cmdName === 'GET') return true;
+  if (isRatingKeyAllowed(key) && cmdName === 'DEL') return true; // cleanup when a photo is removed
   return false;
 }
 // LRANGE (read-only): the shared group chat thread. Writing a message
@@ -67,16 +74,35 @@ module.exports = async (req, res) => {
 
   if (cmdName !== 'PING') {
     const key = command[1];
-    const isListCmd = LIST_COMMANDS.has(cmdName);
-    const keyOk = isListCmd ? isChatKeyAllowed(key) : isDataKeyAllowed(key, cmdName);
+    let keyOk;
+    if (LIST_COMMANDS.has(cmdName)) keyOk = isChatKeyAllowed(key);
+    else if (HASH_COMMANDS.has(cmdName)) keyOk = isRatingKeyAllowed(key);
+    else keyOk = isDataKeyAllowed(key, cmdName);
+
     if (!keyOk) {
       res.status(403).json({ error: 'Key not allowed' });
       return;
     }
+
     if (cmdName === 'SET') {
       const value = command[2];
       if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > MAX_VALUE_BYTES) {
         res.status(413).json({ error: 'Value too large' });
+        return;
+      }
+    }
+
+    if (cmdName === 'HSET') {
+      // ['HSET', 'rating:<id>', '<username>', '<1-5>']
+      const field = command[2];
+      const value = command[3];
+      if (typeof field !== 'string' || field.length === 0 || field.length > MAX_FIELD_LEN || field.includes(':')) {
+        res.status(400).json({ error: 'Invalid field' });
+        return;
+      }
+      const n = Number(value);
+      if (!Number.isInteger(n) || n < 1 || n > 5) {
+        res.status(400).json({ error: 'Rating must be a whole number from 1 to 5' });
         return;
       }
     }

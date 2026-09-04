@@ -137,9 +137,36 @@
 
   /* ---- Lightbox ---- */
   .lightbox { position: fixed; inset: 0; background: rgba(4,10,10,0.92); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
-  .lightbox img { max-width: 90vw; max-height: 78vh; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-  .lightbox-caption { position: absolute; bottom: 26px; color: var(--ink); font-size: 14px; text-align: center; width: 100%; left: 0; }
-  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--ink); font-size: 22px; cursor: pointer; }
+  .lightbox img { max-width: 90vw; max-height: 66vh; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .lightbox-bottom { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom)); left: 0; width: 100%; text-align: center; }
+  .lightbox-caption { color: var(--ink); font-size: 14px; margin-bottom: 10px; }
+  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--ink); font-size: 22px; cursor: pointer; z-index: 1; }
+
+  /* ---- Photo rating ---- */
+  .rating-badge {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    background: rgba(10,20,20,0.72);
+    color: #ffd27a;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 5px;
+  }
+  .rate-widget { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+  .rate-stars { display: flex; gap: 4px; }
+  .star-btn {
+    background: none;
+    border: none;
+    font-size: 30px;
+    line-height: 1;
+    color: rgba(238,241,234,0.28);
+    cursor: pointer;
+    padding: 2px;
+  }
+  .star-btn.star-filled { color: #ffd27a; }
+  .star-btn:hover { color: #ffd27a; }
+  .rate-summary { font-size: 12px; color: var(--ink-dim); }
 
   /* ---- Name modal ---- */
   .modal-overlay { position: fixed; inset: 0; background: rgba(4,10,10,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
@@ -537,6 +564,7 @@
     adminBusy: false,
     pushStatus: 'unknown', // 'unknown' | 'unsupported' | 'ios-needs-install' | 'default' | 'enabled' | 'denied'
     pushBusy: false,
+    ratings: {}, // photoId -> { username: 1-5, ... }
   };
 
   // --- User roster: stored server-side, editable via the Admin panel ---
@@ -1072,6 +1100,54 @@
       state.index = [];
       showToast('Could not load the gallery: ' + e.message);
     }
+    await loadRatingsFor(state.index.map(p => p.id));
+  }
+
+  // --- Ratings: 1-5 stars per photo, stored as a Redis hash (rating:<photoId>
+  // -> { username: stars }) so two people rating the same photo at the same
+  // instant can't clobber each other (HSET is atomic per field). ---
+  async function loadRatingsFor(photoIds) {
+    await Promise.all(photoIds.map(async (id) => {
+      try {
+        const raw = await redisCmd(['HGETALL', 'rating:' + id]);
+        state.ratings[id] = flatArrayToRatingMap(raw);
+      } catch (e) { /* leave whatever we had before on failure */ }
+    }));
+  }
+  function flatArrayToRatingMap(raw) {
+    const map = {};
+    if (Array.isArray(raw)) {
+      for (let i = 0; i < raw.length - 1; i += 2) map[raw[i]] = Number(raw[i + 1]);
+    }
+    return map;
+  }
+  function ratingStats(photoId) {
+    const map = state.ratings[photoId] || {};
+    const values = Object.values(map);
+    if (!values.length) return { avg: 0, count: 0 };
+    return { avg: values.reduce((a, b) => a + b, 0) / values.length, count: values.length };
+  }
+  function myRating(photoId) {
+    const map = state.ratings[photoId] || {};
+    return state.username ? (map[state.username] || 0) : 0;
+  }
+  async function submitRating(photoId, stars) {
+    if (!state.username) return;
+    if (!state.ratings[photoId]) state.ratings[photoId] = {};
+    state.ratings[photoId][state.username] = stars; // optimistic
+    render();
+    try {
+      await redisCmd(['HSET', 'rating:' + photoId, state.username, String(stars)]);
+    } catch (e) {
+      showToast('Could not save your rating: ' + e.message);
+    }
+  }
+  async function refreshRatingForPhoto(photoId) {
+    try {
+      const raw = await redisCmd(['HGETALL', 'rating:' + photoId]);
+      state.ratings[photoId] = flatArrayToRatingMap(raw);
+      if (state.lightbox && state.lightbox.id === photoId) render();
+    } catch (e) { /* ignore, keep showing what we had */ }
   }
 
   async function refreshAll() {
@@ -1149,6 +1225,8 @@
       state.index = state.index.filter(p => p.id !== photo.id);
       await redisSet(INDEX_KEY, JSON.stringify(state.index));
       await redisDel('photo:' + photo.id);
+      redisDel('rating:' + photo.id).catch(() => {}); // best-effort cleanup, don't block on it
+      delete state.ratings[photo.id];
       render();
     } catch (e) {
       showToast('Could not remove photo: ' + e.message);
@@ -1284,11 +1362,13 @@
 
   function photoCardHtml(photo, i, isOwn) {
     const rotate = (i % 2 === 0 ? -1.5 : 1.5) + (i % 3 === 0 ? 0.5 : 0);
+    const { avg, count } = ratingStats(photo.id);
     return `
       <div class="photo-card" style="transform: rotate(${rotate}deg)" data-photo-id="${photo.id}">
         ${isOwn ? `<button class="delete-btn" data-delete-id="${photo.id}" title="Remove">✕</button>` : ''}
         <img data-img-id="${photo.id}" alt="Vacation entry" />
         <div class="photo-owner-tag">${escapeHtml(photo.owner)}</div>
+        ${count ? `<div class="rating-badge">★ ${avg.toFixed(1)}</div>` : ''}
       </div>
     `;
   }
@@ -1360,7 +1440,24 @@
       <div class="lightbox" id="lightbox-overlay">
         <button class="lightbox-close" id="lightbox-close">✕</button>
         <img id="lightbox-img" alt="Vacation entry" />
-        <div class="lightbox-caption">${escapeHtml(p.owner)}</div>
+        <div class="lightbox-bottom">
+          <div class="lightbox-caption">${escapeHtml(p.owner)}</div>
+          ${state.username ? interactiveStarsHtml(p.id) : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function interactiveStarsHtml(photoId) {
+    const { avg, count } = ratingStats(photoId);
+    const mine = myRating(photoId);
+    const stars = [1, 2, 3, 4, 5].map(i => `
+      <button class="star-btn ${i <= mine ? 'star-filled' : ''}" data-rate-photo="${escapeHtml(photoId)}" data-star-value="${i}" title="Rate ${i} star${i > 1 ? 's' : ''}">★</button>
+    `).join('');
+    return `
+      <div class="rate-widget">
+        <div class="rate-stars">${stars}</div>
+        <div class="rate-summary">${count ? `${avg.toFixed(1)} average · ${count} rating${count > 1 ? 's' : ''}` : 'No ratings yet — be the first'}</div>
       </div>
     `;
   }
@@ -1564,7 +1661,11 @@
       card.onclick = () => {
         const id = card.getAttribute('data-photo-id');
         const photo = state.index.find(p => p.id === id);
-        if (photo) { state.lightbox = photo; render(); }
+        if (photo) {
+          state.lightbox = photo;
+          render();
+          refreshRatingForPhoto(id); // pick up any ratings from others since page load
+        }
       };
     });
 
@@ -1572,6 +1673,15 @@
     const lbOverlay = document.getElementById('lightbox-overlay');
     if (lbClose) lbClose.onclick = () => { state.lightbox = null; render(); };
     if (lbOverlay) lbOverlay.onclick = (e) => { if (e.target === lbOverlay) { state.lightbox = null; render(); } };
+
+    root.querySelectorAll('[data-star-value]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const photoId = btn.getAttribute('data-rate-photo');
+        const stars = Number(btn.getAttribute('data-star-value'));
+        submitRating(photoId, stars);
+      };
+    });
   }
 
   function initSplash() {
