@@ -284,6 +284,12 @@
     cursor: pointer;
   }
   .notif-btn:disabled { opacity: 0.6; cursor: default; }
+  .close-app-row {
+    max-width: 880px;
+    margin: 22px auto 0;
+    padding: 0 24px;
+    text-align: center;
+  }
   .close-app-btn {
     background: none;
     border: 1px solid var(--line);
@@ -750,6 +756,7 @@
   const LS_NAME_KEY = 'sunlitframes_username';
   const FALLBACK_USERS = ['Rune', 'Lander', 'Zoë', 'Jurgen']; // used only if the user list can't be fetched
   let FIXED_USERS = FALLBACK_USERS.slice(); // the real roster, loaded from the server and editable via Admin
+  let galleryUserOrder = []; // randomized once per page load, so no one person's photos always land on top
   const CHAT_POLL_MS = 3000;
   const PRESENCE_HEARTBEAT_MS = 8000;
   const PRESENCE_ONLINE_MS = 20000; // considered online if heartbeat seen within this window
@@ -797,6 +804,32 @@
     } catch (e) {
       // keep whatever FIXED_USERS already is (fallback or previous value)
     }
+  }
+
+  function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function shuffleGalleryUserOrder() {
+    galleryUserOrder = shuffleArray(FIXED_USERS);
+  }
+
+  // Groups the "In competition" photos by owner, then orders those groups
+  // according to this session's randomized user order (re-rolled on every
+  // page load) — so the gallery reads clearly one person's photos at a
+  // time, but it's never always the same person's photos sitting on top.
+  function orderedOtherPhotos(photos) {
+    const byOwner = {};
+    photos.forEach(p => { (byOwner[p.owner] = byOwner[p.owner] || []).push(p); });
+    const orderedOwners = galleryUserOrder.filter(u => byOwner[u]);
+    Object.keys(byOwner).forEach(u => { if (!orderedOwners.includes(u)) orderedOwners.push(u); });
+    let result = [];
+    orderedOwners.forEach(u => { result = result.concat(byOwner[u]); });
+    return result;
   }
 
   // --- Backend: our own /api/redis serverless proxy (Upstash token stays server-side) ---
@@ -1581,9 +1614,18 @@
     playRatingSound(stars);
     try {
       await redisCmd(['HSET', 'rating:' + photoId, state.username, String(stars)]);
+      if (photo) notifyRatingPush(photo.owner, stars);
     } catch (e) {
       showToast('Could not save your rating: ' + e.message);
     }
+  }
+  function notifyRatingPush(ownerName, stars) {
+    // Best-effort, fire-and-forget — never blocks or affects the rating UX.
+    fetch('/api/notify-rating', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rater: state.username, owner: ownerName, stars }),
+    }).catch(() => {});
   }
   async function refreshRatingForPhoto(photoId) {
     try {
@@ -1767,6 +1809,10 @@
 
       ${podiumHtml()}
 
+      <div class="close-app-row">
+        <button class="close-app-btn" id="close-app-btn">✕ Close app</button>
+      </div>
+
       <div class="section">
         <div class="section-head">
           <h2 class="section-title headline-font">My entries</h2>
@@ -1792,13 +1838,12 @@
         </div>
         ${state.loading ? `<div class="empty-state">Loading gallery…</div>` :
           otherPhotos.length === 0 ? `<div class="empty-state">No other entries yet.</div>` :
-          `<div class="photo-grid">${otherPhotos.map((p, i) => photoCardHtml(p, i, false)).join('')}</div>`
+          `<div class="photo-grid">${orderedOtherPhotos(otherPhotos).map((p, i) => photoCardHtml(p, i, false)).join('')}</div>`
         }
       </div>
 
       <div class="app-footer">
         ${state.username ? `<button class="notif-btn" id="notif-btn" ${state.pushBusy ? 'disabled' : ''}>${pushButtonLabel()}</button>` : ''}
-        <button class="close-app-btn" id="close-app-btn">✕ Close app</button>
         <button class="admin-link" id="admin-link">Admin</button>
       </div>
 
@@ -2286,6 +2331,7 @@
   (async function init() {
     initSplash();
     await loadUsersList();
+    shuffleGalleryUserOrder();
     loadUsername();
     if (state.username) { loadLastSeen(); startChatPolling(); startPresenceLoop(); }
     detectPushStatus();

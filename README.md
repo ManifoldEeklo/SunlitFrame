@@ -151,6 +151,25 @@ the server the whole time.
   per photo. This shares the same push-sending code as chat messages
   (`lib/push.js`) and needs the same `VAPID_*` environment variables —
   if those aren't set, uploads still work fine, there's just no push.
+- **Rating notifications**: same idea, via `api/notify-rating.js` —
+  confirming a rating sends everyone else a push like "Someone rated
+  Lander's photo ★★★★☆". Deliberately kept a little anonymous: the
+  photo owner's name shows, but who did the rating never does — not
+  in the push text, not anywhere client-visible. Note: web push
+  notification *sounds* are controlled entirely by the phone's OS, not
+  by the website — there's no way for a website to assign a distinct
+  custom sound per notification type on any current browser/OS. The
+  message text is what differentiates a rating alert from an upload
+  alert; the actual alert tone will be whatever the device's default
+  notification sound is either way.
+- **Gallery order**: the "In competition" grid groups each person's
+  photos together (so it reads clearly one entrant at a time) but
+  shuffles *whose* group appears first — freshly randomized every time
+  the page loads — so no single person's photos are always sitting at
+  the top.
+- **Close app button** now sits in its own row just above "My entries"
+  (was previously all the way down in the footer with Admin/notify
+  settings) — easier to find without scrolling past every photo.
 - **Star ratings**: tap any photo to open it, then tap 1-5 stars to
   rate it — hovering (on desktop) previews the lower stars lighting up
   as you move across them, like a slider, before you click to confirm
