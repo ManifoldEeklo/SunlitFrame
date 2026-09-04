@@ -180,6 +180,12 @@ the server the whole time.
   the contest without closing and reopening each one — wraps around
   from the last photo back to the first. Desktop also gets arrow-key
   and Escape-key shortcuts.
+- **Welcome jingle**: a short original instrumental tune (bright,
+  marimba-ish arpeggio) plays once per visit, the moment someone first
+  taps/types anything on the page. It can't play the literal instant
+  the page loads — browsers block all audio until there's been a real
+  tap or keypress — so this is as close to "on open" as that
+  restriction allows. Synthesized live, no audio file.
 - **Rating celebration**: confirming a rating pops a few seconds of
   confetti (a lightweight canvas particle burst, no library) and plays
   one of 5 short synthesized sounds — one per star count, with 5 stars

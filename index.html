@@ -921,14 +921,56 @@
   // gesture, so we lazily create/resume a shared AudioContext on the
   // first tap/keypress and reuse it from then on. ---
   let audioCtx = null;
+  let welcomeJinglePlayed = false;
   function ensureAudioContext() {
+    let justCreated = false;
     if (!audioCtx) {
-      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); justCreated = true; } catch (e) { return; }
     }
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    if (justCreated && !welcomeJinglePlayed) {
+      welcomeJinglePlayed = true;
+      playWelcomeJingle();
+    }
   }
   document.addEventListener('pointerdown', ensureAudioContext);
   document.addEventListener('keydown', ensureAudioContext);
+
+  // Original short instrumental jingle (bright, tropical, marimba-ish) —
+  // fires once per session on the first interaction, since browsers block
+  // audio from autoplaying before any tap/click ever happens.
+  function playWelcomeJingle() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5]; // C5 E5 G5 C6 G5 C6
+    const stepTime = 0.14;
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const start = now + i * stepTime;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.16, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+    const chordStart = now + notes.length * stepTime + 0.02;
+    [523.25, 659.25, 783.99].forEach(freq => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, chordStart);
+      gain.gain.linearRampToValueAtTime(0.12, chordStart + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, chordStart + 0.9);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(chordStart);
+      osc.stop(chordStart + 0.95);
+    });
+  }
 
   function playNotificationChime() {
     if (!audioCtx) return; // not unlocked yet (no user gesture so far) — skip silently
