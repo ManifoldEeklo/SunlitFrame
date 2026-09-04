@@ -152,14 +152,46 @@ the server the whole time.
   (`lib/push.js`) and needs the same `VAPID_*` environment variables —
   if those aren't set, uploads still work fine, there's just no push.
 - **Star ratings**: tap any photo to open it, then tap 1-5 stars to
-  rate it. Anyone can rate any photo (including their own). The
-  average shows as a small badge in the bottom-right corner of each
-  photo card once it has at least one rating, and as a live number
-  inside the lightbox. Stored as a Redis hash (`rating:<photoId>` ->
-  `{username: 1-5}`), which makes each person's rating an atomic write
-  — two people rating the same photo at the same instant can't
-  overwrite each other's score. Deleting a photo also removes its
-  ratings.
+  rate it — hovering (on desktop) previews the lower stars lighting up
+  as you move across them, like a slider, before you click to confirm
+  (a pure-CSS trick: the markup is written 5→1 with the row visually
+  flipped back via `flex-direction: row-reverse`, so `:hover ~` can
+  cascade the highlight down to every lower star). **People can't rate
+  their own photos** — the widget shows a note instead of stars there,
+  both in the UI and as a server-adjacent guard in the send function.
+  The average shows as a small badge in the bottom-right corner of
+  each photo card once it has at least one rating, and as a live
+  number inside the lightbox. Stored as a Redis hash
+  (`rating:<photoId>` -> `{username: 1-5}`), which makes each
+  person's rating an atomic write — two people rating the same photo
+  at the same instant can't overwrite each other's score. Deleting a
+  photo also removes its ratings.
+- **Admin ratings breakdown**: the Admin panel (below the user roster)
+  lists every photo with exactly who rated it and how many stars they
+  gave — e.g. "Rune's photo — Lander: ★★★★☆". Refreshes automatically
+  each time the panel opens.
+- **Rating celebration**: confirming a rating pops a few seconds of
+  confetti (a lightweight canvas particle burst, no library) and plays
+  one of 5 short synthesized sounds — one per star count, with 5 stars
+  getting an extra celebratory flourish on top. Both degrade silently
+  if the browser doesn't support canvas/audio; the rating itself always
+  still saves.
+- **Close app**: a "✕ Close app" button in the footer plays a
+  synthesized "whoosh" sound and shrinks the whole screen down to a
+  point (a CSS-only TV-power-off style effect), then shows a friendly
+  "closed" placeholder with a one-tap reopen. A webpage can't actually
+  force-close a browser tab it didn't open itself — this was tried and
+  intentionally left out after testing showed it could cause odd
+  behavior in some environments — so this is a purely visual/audio
+  effect rather than a real close, but the animation is the whole fun
+  of it.
+- **Leaderboard**: each person's overall average — pooled across every
+  star anyone's given any of their photos, not an average-of-averages
+  — shows next to their name in the header. The top 3 (once at least
+  one rating exists anywhere) get an animated podium between the
+  header and the photo grids, with the classic 2nd-1st-3rd layout and
+  the bars rising into place. Computed entirely client-side from data
+  already loaded — no extra storage or requests.
 - Photos are resized/compressed client-side before upload to keep them
   small and fast to sync.
 - Registration closes 2026-09-10, winner announced 2026-09-17 — edit

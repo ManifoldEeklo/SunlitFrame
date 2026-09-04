@@ -154,7 +154,11 @@
     border-radius: 5px;
   }
   .rate-widget { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
-  .rate-stars { display: flex; gap: 4px; }
+  .rate-stars {
+    display: flex;
+    flex-direction: row-reverse; /* markup is 5→1; this flips it back to a normal 1→5 visual order */
+    gap: 4px;
+  }
   .star-btn {
     background: none;
     border: none;
@@ -165,12 +169,19 @@
     padding: 2px;
   }
   .star-btn.star-filled { color: #ffd27a; }
-  .star-btn:hover { color: #ffd27a; }
+  /* Hovering a star highlights it AND every star after it in the (reversed)
+     markup — i.e. every LOWER value visually — giving a live slider-style
+     preview of the rating before the click confirms it. */
+  .rate-stars .star-btn:hover,
+  .rate-stars .star-btn:hover ~ .star-btn {
+    color: #ffd27a;
+  }
   .rate-summary { font-size: 12px; color: var(--ink-dim); }
+  .rate-own-note { font-size: 12px; color: var(--ink-dim); font-style: italic; }
 
   /* ---- Name modal ---- */
   .modal-overlay { position: fixed; inset: 0; background: rgba(4,10,10,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-  .modal-box { background: var(--panel); padding: 32px 30px; max-width: 360px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5); border: 1px solid var(--line); }
+  .modal-box { background: var(--panel); padding: 32px 30px; max-width: 360px; width: 100%; max-height: 82vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.5); border: 1px solid var(--line); }
   .modal-box h2 { margin: 0 0 8px 0; font-size: 21px; color: var(--ink); }
   .modal-box p { font-size: 13.5px; color: var(--ink-dim); margin: 0 0 18px 0; }
   .modal-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); font-size: 14px; margin-bottom: 14px; background: var(--page-bg); color: var(--ink); font-family: inherit; }
@@ -222,6 +233,16 @@
     cursor: pointer;
   }
   .notif-btn:disabled { opacity: 0.6; cursor: default; }
+  .close-app-btn {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .close-app-btn:hover { color: #ff8080; border-color: rgba(255,128,128,0.4); }
   .admin-link {
     background: none;
     border: none;
@@ -276,8 +297,66 @@
     font-size: 16px;
     font-family: inherit;
   }
+  .admin-subheading {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 22px 0 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .admin-ratings-list { display: flex; flex-direction: column; gap: 8px; }
+  .admin-rating-row {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .admin-rating-owner { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .admin-rating-detail { font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  .admin-rating-detail em { font-style: italic; opacity: 0.7; }
 
   .toast { position: fixed; bottom: calc(22px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
+
+  .confetti-canvas { position: fixed; inset: 0; z-index: 2600; pointer-events: none; }
+
+  /* ---- Close app: sucked into the middle, TV-power-off style ---- */
+  #app-root.app-closing {
+    animation: appCloseEffect 0.65s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+    transform-origin: center center;
+  }
+  @keyframes appCloseEffect {
+    0%   { transform: scale(1);                    filter: brightness(1);   opacity: 1; }
+    55%  { transform: scaleY(0.03) scaleX(1.04);    filter: brightness(1.6); opacity: 1; }
+    78%  { transform: scaleY(0.03) scaleX(0);       filter: brightness(2);  opacity: 1; }
+    100% { transform: scale(0);                     filter: brightness(0.4); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #app-root.app-closing { animation-duration: 0.05s; }
+  }
+  .closed-screen {
+    position: fixed; inset: 0;
+    z-index: 5000;
+    background: #05100f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    animation: closedFadeIn 0.3s ease;
+  }
+  .closed-emoji { font-size: 44px; opacity: 0.85; }
+  .closed-text { color: rgba(238,241,234,0.55); font-size: 14px; }
+  .closed-reopen {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  @keyframes closedFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   @media (max-width: 520px) {
     .header-meta { gap: 14px; }
@@ -517,6 +596,64 @@
   }
   .presence-online .presence-dot { background: #3ecf6e; box-shadow: 0 0 0 2px rgba(62,207,110,0.18); }
   .presence-offline .presence-dot { background: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,0.14); }
+  .presence-rating { color: #ffd27a; font-weight: 600; }
+
+  /* ---- Podium (top 3 rated entrants) ---- */
+  .podium-section {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 30px 24px 0;
+  }
+  .podium-title { font-size: 20px; margin: 0 0 16px; color: var(--ink); }
+  .podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+  }
+  .podium-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 108px;
+  }
+  .podium-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .podium-rating { font-size: 12px; color: #ffd27a; margin: 2px 0 8px; }
+  .podium-bar {
+    width: 100%;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10px;
+    transform-origin: bottom center;
+    animation: podiumRise 0.6s cubic-bezier(0.2, 0.85, 0.3, 1.1) both;
+    box-shadow: 0 -2px 0 rgba(0,0,0,0.12) inset;
+  }
+  .podium-medal { font-size: 24px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+  .podium-bar-1 { height: 118px; background: linear-gradient(180deg, #ffe08a, #ffb84d); animation-delay: 0.18s; }
+  .podium-bar-2 { height: 86px; background: linear-gradient(180deg, #eef1ea, #b9bec7); animation-delay: 0.05s; }
+  .podium-bar-3 { height: 62px; background: linear-gradient(180deg, #eab98a, #c98a52); animation-delay: 0s; }
+  @keyframes podiumRise {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .podium-bar { animation-duration: 0.01s; }
+  }
+  @media (max-width: 420px) {
+    .podium { gap: 10px; }
+    .podium-col { width: 90px; }
+  }
 </style>
 </head>
 <body>
@@ -528,6 +665,7 @@
 </div>
 <div id="app-root"></div>
 <div id="msg-notify-root"></div>
+<div id="closed-screen-root"></div>
 
 <script>
 (function () {
@@ -735,6 +873,182 @@
       osc.start(start);
       osc.stop(start + 0.26);
     });
+  }
+
+  // One short sound per star count, getting brighter/fuller as the rating
+  // goes up — 5 stars gets a little extra celebratory flourish on top.
+  function playRatingSound(stars) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const noteSets = {
+      1: [392],
+      2: [392, 440],
+      3: [392, 440, 494],
+      4: [392, 440, 494, 523],
+      5: [392, 494, 587, 659, 784],
+    };
+    const notes = noteSets[stars] || noteSets[1];
+    const stepTime = stars === 5 ? 0.09 : 0.11;
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = stars === 5 ? 'triangle' : 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * stepTime;
+      const peak = stars === 5 ? 0.25 : 0.18;
+      const dur = stars === 5 ? 0.36 : 0.22;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(peak, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.04);
+    });
+    if (stars === 5) {
+      const chordStart = now + notes.length * stepTime + 0.03;
+      [784, 988, 1175].forEach(freq => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, chordStart);
+        gain.gain.linearRampToValueAtTime(0.15, chordStart + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, chordStart + 0.5);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(chordStart);
+        osc.stop(chordStart + 0.55);
+      });
+    }
+  }
+
+  function createNoiseBuffer(duration) {
+    const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  // A descending tone swept through a filter, plus a bandpassed noise burst
+  // — the classic "vacuum suck" whoosh, for the close-app animation.
+  function playCloseSound() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+
+    const osc = audioCtx.createOscillator();
+    const oscGain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1100, now);
+    osc.frequency.exponentialRampToValueAtTime(70, now + 0.5);
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.linearRampToValueAtTime(0.18, now + 0.06);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    osc.connect(oscGain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.58);
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = createNoiseBuffer(0.5);
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(1800, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(150, now + 0.45);
+    noiseFilter.Q.value = 0.7;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.0001, now);
+    noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.05);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    noise.connect(noiseFilter).connect(noiseGain).connect(audioCtx.destination);
+    noise.start(now);
+    noise.stop(now + 0.5);
+  }
+
+  // --- Confetti: a lightweight canvas particle burst, cleans itself up
+  // after a few seconds. No library — just a couple dozen rectangles with
+  // gravity and fade-out. ---
+  function launchConfetti() {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'confetti-canvas';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { canvas.remove(); return; }
+    const colors = ['#ff8a5c', '#ffd27a', '#3ecf6e', '#eef1ea', '#ff6b6b', '#6ec6ff'];
+    const particles = [];
+    const count = 90;
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: canvas.width / 2 + (Math.random() - 0.5) * 100,
+        y: canvas.height * 0.35 + (Math.random() - 0.5) * 40,
+        vx: (Math.random() - 0.5) * 9,
+        vy: -(Math.random() * 6 + 4),
+        size: Math.random() * 6 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        rotSpeed: (Math.random() - 0.5) * 12,
+        gravity: 0.15 + Math.random() * 0.08,
+        life: 0,
+        maxLife: 130 + Math.random() * 40,
+      });
+    }
+    let frame = 0;
+    function tick() {
+      frame++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let aliveAny = false;
+      particles.forEach(p => {
+        p.life++;
+        if (p.life > p.maxLife) return;
+        aliveAny = true;
+        p.vy += p.gravity;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rotation += p.rotSpeed;
+        const alpha = Math.max(0, 1 - p.life / p.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      });
+      if (aliveAny && frame < 220) {
+        requestAnimationFrame(tick);
+      } else {
+        canvas.remove();
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // "Closing" the app: play the suck/whoosh sound, shrink the whole app
+  // down to a point (TV-power-off style), then show a friendly placeholder.
+  // A webpage's own script generally can't close a browser tab it didn't
+  // open itself (browsers block it as a safety measure), and attempting
+  // window.close() anyway turned out to risk odd teardown behavior in some
+  // environments — so this relies entirely on the visual "closed" screen,
+  // which is reliable everywhere and delivers the same fun result.
+  function closeApp() {
+    playCloseSound();
+    stopChatPolling();
+    stopPresenceLoop();
+    if (root) root.classList.add('app-closing');
+    setTimeout(showClosedScreen, 650);
+  }
+  function showClosedScreen() {
+    const container = document.getElementById('closed-screen-root');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="closed-screen" id="closed-screen">
+        <div class="closed-emoji">🏖️</div>
+        <div class="closed-text">SummerContest closed</div>
+        <button class="closed-reopen" id="closed-reopen">Tap to reopen</button>
+      </div>
+    `;
+    const reopenBtn = document.getElementById('closed-reopen');
+    if (reopenBtn) reopenBtn.onclick = () => location.reload();
   }
 
   function openChatToThread() {
@@ -1133,9 +1447,13 @@
   }
   async function submitRating(photoId, stars) {
     if (!state.username) return;
+    const photo = state.index.find(p => p.id === photoId);
+    if (photo && photo.owner === state.username) return; // can't rate your own photo
     if (!state.ratings[photoId]) state.ratings[photoId] = {};
     state.ratings[photoId][state.username] = stars; // optimistic
     render();
+    launchConfetti();
+    playRatingSound(stars);
     try {
       await redisCmd(['HSET', 'rating:' + photoId, state.username, String(stars)]);
     } catch (e) {
@@ -1148,6 +1466,26 @@
       state.ratings[photoId] = flatArrayToRatingMap(raw);
       if (state.lightbox && state.lightbox.id === photoId) render();
     } catch (e) { /* ignore, keep showing what we had */ }
+  }
+
+  // A user's overall rating pools every individual star given across all of
+  // their photos (rather than averaging their photos' averages), so someone
+  // with one 5-star photo doesn't outrank someone with ten well-rated ones.
+  function userRatingStats(username) {
+    const photoIds = state.index.filter(p => p.owner === username).map(p => p.id);
+    let allValues = [];
+    photoIds.forEach(id => {
+      const map = state.ratings[id] || {};
+      allValues = allValues.concat(Object.values(map));
+    });
+    if (!allValues.length) return { avg: 0, count: 0 };
+    return { avg: allValues.reduce((a, b) => a + b, 0) / allValues.length, count: allValues.length };
+  }
+  function computeLeaderboard() {
+    return FIXED_USERS
+      .map(name => ({ name, ...userRatingStats(name) }))
+      .filter(u => u.count > 0)
+      .sort((a, b) => b.avg - a.avg || b.count - a.count);
   }
 
   async function refreshAll() {
@@ -1275,11 +1613,14 @@
               </div>
             </div>
             <div class="presence-row">
-              ${FIXED_USERS.map(name => `
+              ${FIXED_USERS.map(name => {
+                const uStats = userRatingStats(name);
+                return `
                 <span class="presence-chip ${state.presence[name] ? 'presence-online' : 'presence-offline'}" data-presence-name="${escapeHtml(name)}">
-                  <span class="presence-dot"></span>${escapeHtml(name)}
+                  <span class="presence-dot"></span>${escapeHtml(name)}${uStats.count ? ` <span class="presence-rating">★${uStats.avg.toFixed(1)}</span>` : ''}
                 </span>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
             ${state.username ? `
             <form class="inline-compose" id="inline-compose">
@@ -1298,6 +1639,8 @@
         Signed in as <strong>${escapeHtml(state.username)}</strong>
         <button id="switch-user-btn">switch</button>
       </div>` : ''}
+
+      ${podiumHtml()}
 
       <div class="section">
         <div class="section-head">
@@ -1330,6 +1673,7 @@
 
       <div class="app-footer">
         ${state.username ? `<button class="notif-btn" id="notif-btn" ${state.pushBusy ? 'disabled' : ''}>${pushButtonLabel()}</button>` : ''}
+        <button class="close-app-btn" id="close-app-btn">✕ Close app</button>
         <button class="admin-link" id="admin-link">Admin</button>
       </div>
 
@@ -1356,6 +1700,33 @@
           <input type="text" id="chat-input" placeholder="Message everyone…" maxlength="500" autocomplete="off" />
           <button type="submit" class="chat-send">Send</button>
         </form>
+      </div>
+    `;
+  }
+
+  function podiumHtml() {
+    const top = computeLeaderboard().slice(0, 3);
+    if (!top.length) return '';
+    const rankMeta = [
+      { barClass: 'podium-bar-1', medal: '🥇' },
+      { barClass: 'podium-bar-2', medal: '🥈' },
+      { barClass: 'podium-bar-3', medal: '🥉' },
+    ];
+    const entries = top.map((u, i) => ({ ...u, ...rankMeta[i] }));
+    // Classic podium visual order: 2nd on the left, 1st in the middle, 3rd on the right.
+    const visual = entries.length === 3 ? [entries[1], entries[0], entries[2]] : entries;
+    return `
+      <div class="podium-section">
+        <h2 class="section-title headline-font podium-title">🏆 Top rated</h2>
+        <div class="podium">
+          ${visual.map(u => `
+            <div class="podium-col">
+              <div class="podium-name">${escapeHtml(u.name)}</div>
+              <div class="podium-rating">★ ${u.avg.toFixed(1)}</div>
+              <div class="podium-bar ${u.barClass}"><span class="podium-medal">${u.medal}</span></div>
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
   }
@@ -1431,6 +1802,30 @@
         <input type="text" id="admin-add-input" placeholder="New name" maxlength="30" autocomplete="off" />
         <button type="submit" class="primary" style="width:auto;margin-top:0;" ${state.adminBusy ? 'disabled' : ''}>Add</button>
       </form>
+      ${adminRatingsHtml()}
+    `;
+  }
+
+  function adminRatingsHtml() {
+    if (!state.index.length) {
+      return `<h3 class="admin-subheading">Photo ratings</h3><p class="empty-state">No photos uploaded yet.</p>`;
+    }
+    const rows = state.index.map(photo => {
+      const map = state.ratings[photo.id] || {};
+      const entries = Object.entries(map);
+      const detail = entries.length
+        ? entries.map(([user, stars]) => `${escapeHtml(user)}: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`).join('<br>')
+        : '<em>No ratings yet</em>';
+      return `
+        <div class="admin-rating-row">
+          <div class="admin-rating-owner">${escapeHtml(photo.owner)}'s photo</div>
+          <div class="admin-rating-detail">${detail}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <h3 class="admin-subheading">Photo ratings</h3>
+      <div class="admin-ratings-list">${rows}</div>
     `;
   }
 
@@ -1450,14 +1845,31 @@
 
   function interactiveStarsHtml(photoId) {
     const { avg, count } = ratingStats(photoId);
+    const photo = state.index.find(p => p.id === photoId);
+    const isOwnPhoto = photo && photo.owner === state.username;
+    const summary = count ? `${avg.toFixed(1)} average · ${count} rating${count > 1 ? 's' : ''}` : 'No ratings yet' + (isOwnPhoto ? '' : ' — be the first');
+
+    if (isOwnPhoto) {
+      return `
+        <div class="rate-widget">
+          <div class="rate-summary">${summary}</div>
+          <div class="rate-own-note">You can't rate your own photo</div>
+        </div>
+      `;
+    }
+
     const mine = myRating(photoId);
-    const stars = [1, 2, 3, 4, 5].map(i => `
+    // Markup goes 5→1 (highest first) with the container flex-reversed back to
+    // a normal 1→5 visual order — that's what lets ":hover ~" cascade the
+    // highlight down to every LOWER star using plain CSS, giving a live
+    // "slider" preview before the click confirms the rating.
+    const stars = [5, 4, 3, 2, 1].map(i => `
       <button class="star-btn ${i <= mine ? 'star-filled' : ''}" data-rate-photo="${escapeHtml(photoId)}" data-star-value="${i}" title="Rate ${i} star${i > 1 ? 's' : ''}">★</button>
     `).join('');
     return `
       <div class="rate-widget">
         <div class="rate-stars">${stars}</div>
-        <div class="rate-summary">${count ? `${avg.toFixed(1)} average · ${count} rating${count > 1 ? 's' : ''}` : 'No ratings yet — be the first'}</div>
+        <div class="rate-summary">${summary}</div>
       </div>
     `;
   }
@@ -1512,12 +1924,16 @@
       };
     }
 
+    const closeAppBtn = document.getElementById('close-app-btn');
+    if (closeAppBtn) closeAppBtn.onclick = () => closeApp();
+
     const adminLink = document.getElementById('admin-link');
     if (adminLink) {
       adminLink.onclick = () => {
         state.showAdmin = true;
         state.adminError = null;
         render();
+        if (state.adminUnlocked) loadRatingsFor(state.index.map(p => p.id)).then(render);
       };
     }
     const adminCancel = document.getElementById('admin-cancel');
@@ -1543,6 +1959,7 @@
           state.adminUnlocked = true;
           state.adminPasswordCache = pwd;
           await loadUsersList();
+          await loadRatingsFor(state.index.map(p => p.id));
         } catch (e) {
           state.adminError = e.message;
         }
