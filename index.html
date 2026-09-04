@@ -136,11 +136,62 @@
   .empty-state { margin-top: 18px; padding: 26px; border: 1px dashed var(--line); color: var(--ink-dim); font-size: 13.5px; }
 
   /* ---- Lightbox ---- */
-  .lightbox { position: fixed; inset: 0; background: rgba(4,10,10,0.92); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
-  .lightbox img { max-width: 90vw; max-height: 66vh; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-  .lightbox-bottom { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom)); left: 0; width: 100%; text-align: center; }
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(4,10,10,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+  }
+  .lightbox-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .lightbox-topbar {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+  .lightbox-close {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lightbox-image-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    min-height: 0;
+  }
+  .lightbox-image-row img { flex: 1 1 auto; min-width: 0; max-width: min(78vw, 560px); max-height: 56vh; display: block; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .lightbox-nav {
+    flex: 0 0 auto;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-nav:hover { border-color: var(--coral); }
+  .lightbox-bottom { margin-top: 14px; text-align: center; }
   .lightbox-caption { color: var(--ink); font-size: 14px; margin-bottom: 10px; }
-  .lightbox-close { position: absolute; top: 20px; right: 26px; background: none; border: none; color: var(--ink); font-size: 22px; cursor: pointer; z-index: 1; }
 
   /* ---- Photo rating ---- */
   .rating-badge {
@@ -305,15 +356,37 @@
     padding-top: 16px;
     border-top: 1px solid var(--line);
   }
-  .admin-ratings-list { display: flex; flex-direction: column; gap: 8px; }
-  .admin-rating-row {
+  .admin-ratings-list { display: flex; flex-direction: column; gap: 14px; }
+  .admin-owner-group {
     background: var(--panel-2);
     border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: 8px;
+    padding: 10px 12px 12px;
   }
-  .admin-rating-owner { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
-  .admin-rating-detail { font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  .admin-owner-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-owner-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .admin-owner-avg { font-size: 11.5px; color: #ffd27a; font-weight: 600; }
+  .admin-owner-photos { display: flex; flex-direction: column; gap: 8px; }
+  .admin-rating-photo-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .admin-rating-thumb {
+    width: 44px; height: 44px;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border-radius: 5px;
+    background: var(--page-bg);
+  }
+  .admin-rating-detail { font-size: 12px; color: var(--ink-dim); line-height: 1.6; padding-top: 2px; }
   .admin-rating-detail em { font-style: italic; opacity: 0.7; }
 
   .toast { position: fixed; bottom: calc(22px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
@@ -1083,6 +1156,16 @@
   window.addEventListener('focus', pollNowIfActive);
   window.addEventListener('pageshow', pollNowIfActive);
 
+  // Lightbox keyboard navigation (desktop convenience) — registered once,
+  // not inside attachHandlers, so it doesn't pile up duplicate listeners
+  // on every re-render.
+  document.addEventListener('keydown', (e) => {
+    if (!state.lightbox) return;
+    if (e.key === 'ArrowLeft') navigateLightbox(-1);
+    else if (e.key === 'ArrowRight') navigateLightbox(1);
+    else if (e.key === 'Escape') { state.lightbox = null; render(); }
+  });
+
   // --- Presence: a lightweight heartbeat so the 3 names can show an
   // online/offline dot. This is purely cosmetic and never affects who can
   // send or receive messages. ---
@@ -1810,37 +1893,76 @@
     if (!state.index.length) {
       return `<h3 class="admin-subheading">Photo ratings</h3><p class="empty-state">No photos uploaded yet.</p>`;
     }
-    const rows = state.index.map(photo => {
-      const map = state.ratings[photo.id] || {};
-      const entries = Object.entries(map);
-      const detail = entries.length
-        ? entries.map(([user, stars]) => `${escapeHtml(user)}: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`).join('<br>')
-        : '<em>No ratings yet</em>';
+    const byOwner = {};
+    state.index.forEach(photo => {
+      if (!byOwner[photo.owner]) byOwner[photo.owner] = [];
+      byOwner[photo.owner].push(photo);
+    });
+    const ownerNames = Object.keys(byOwner).sort((a, b) => a.localeCompare(b));
+
+    const groups = ownerNames.map(owner => {
+      const uStats = userRatingStats(owner);
+      const photosHtml = byOwner[owner].map(photo => {
+        const map = state.ratings[photo.id] || {};
+        const entries = Object.entries(map);
+        const detail = entries.length
+          ? entries.map(([user, stars]) => `${escapeHtml(user)}: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`).join('<br>')
+          : '<em>No ratings yet</em>';
+        return `
+          <div class="admin-rating-photo-row">
+            <img class="admin-rating-thumb" data-img-id="${photo.id}" alt="" />
+            <div class="admin-rating-detail">${detail}</div>
+          </div>
+        `;
+      }).join('');
       return `
-        <div class="admin-rating-row">
-          <div class="admin-rating-owner">${escapeHtml(photo.owner)}'s photo</div>
-          <div class="admin-rating-detail">${detail}</div>
+        <div class="admin-owner-group">
+          <div class="admin-owner-header">
+            <span class="admin-owner-name">${escapeHtml(owner)}</span>
+            <span class="admin-owner-avg">${uStats.count ? `★ ${uStats.avg.toFixed(1)} avg` : 'No ratings yet'}</span>
+          </div>
+          <div class="admin-owner-photos">${photosHtml}</div>
         </div>
       `;
     }).join('');
+
     return `
       <h3 class="admin-subheading">Photo ratings</h3>
-      <div class="admin-ratings-list">${rows}</div>
+      <div class="admin-ratings-list">${groups}</div>
     `;
   }
 
   function lightboxHtml() {
     const p = state.lightbox;
+    const canNav = state.index.length > 1;
     return `
       <div class="lightbox" id="lightbox-overlay">
-        <button class="lightbox-close" id="lightbox-close">✕</button>
-        <img id="lightbox-img" alt="Vacation entry" />
-        <div class="lightbox-bottom">
-          <div class="lightbox-caption">${escapeHtml(p.owner)}</div>
-          ${state.username ? interactiveStarsHtml(p.id) : ''}
+        <div class="lightbox-frame">
+          <div class="lightbox-topbar">
+            <button class="lightbox-close" id="lightbox-close">✕ Close</button>
+          </div>
+          <div class="lightbox-image-row">
+            ${canNav ? `<button class="lightbox-nav lightbox-prev" id="lightbox-prev" title="Previous photo">‹</button>` : ''}
+            <img id="lightbox-img" alt="Vacation entry" />
+            ${canNav ? `<button class="lightbox-nav lightbox-next" id="lightbox-next" title="Next photo">›</button>` : ''}
+          </div>
+          <div class="lightbox-bottom">
+            <div class="lightbox-caption">${escapeHtml(p.owner)}</div>
+            ${state.username ? interactiveStarsHtml(p.id) : ''}
+          </div>
         </div>
       </div>
     `;
+  }
+
+  function navigateLightbox(delta) {
+    if (!state.lightbox || !state.index.length) return;
+    const idx = state.index.findIndex(p => p.id === state.lightbox.id);
+    if (idx === -1) return;
+    const nextIdx = (idx + delta + state.index.length) % state.index.length;
+    state.lightbox = state.index[nextIdx];
+    render();
+    refreshRatingForPhoto(state.lightbox.id);
   }
 
   function interactiveStarsHtml(photoId) {
@@ -2090,6 +2212,11 @@
     const lbOverlay = document.getElementById('lightbox-overlay');
     if (lbClose) lbClose.onclick = () => { state.lightbox = null; render(); };
     if (lbOverlay) lbOverlay.onclick = (e) => { if (e.target === lbOverlay) { state.lightbox = null; render(); } };
+
+    const lbPrev = document.getElementById('lightbox-prev');
+    const lbNext = document.getElementById('lightbox-next');
+    if (lbPrev) lbPrev.onclick = (e) => { e.stopPropagation(); navigateLightbox(-1); };
+    if (lbNext) lbNext.onclick = (e) => { e.stopPropagation(); navigateLightbox(1); };
 
     root.querySelectorAll('[data-star-value]').forEach(btn => {
       btn.onclick = (e) => {

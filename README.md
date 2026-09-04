@@ -167,9 +167,19 @@ the server the whole time.
   at the same instant can't overwrite each other's score. Deleting a
   photo also removes its ratings.
 - **Admin ratings breakdown**: the Admin panel (below the user roster)
-  lists every photo with exactly who rated it and how many stars they
-  gave — e.g. "Rune's photo — Lander: ★★★★☆". Refreshes automatically
-  each time the panel opens.
+  groups every photo by owner (alphabetical), showing each person's
+  overall average up top and a thumbnail + who-rated-it-with-how-many-
+  stars underneath each of their photos — e.g. "Zoë — ★4.0 avg" with
+  her photos listed underneath. Refreshes automatically each time the
+  panel opens.
+- **Lightbox navigation**: the close button now sits in a proper bar
+  directly above the photo (not a small icon floating in a corner that
+  could overlap the notch/status bar) with a clear "✕ Close" label and
+  a real touch-friendly tap target. Left/right arrow buttons flank the
+  photo (once there's more than one) to browse and rate every photo in
+  the contest without closing and reopening each one — wraps around
+  from the last photo back to the first. Desktop also gets arrow-key
+  and Escape-key shortcuts.
 - **Rating celebration**: confirming a rating pops a few seconds of
   confetti (a lightweight canvas particle burst, no library) and plays
   one of 5 short synthesized sounds — one per star count, with 5 stars
