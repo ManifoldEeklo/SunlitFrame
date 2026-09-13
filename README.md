@@ -29,7 +29,7 @@ vercel                  # follow the prompts, creates a preview deployment
 ## 3. Set the environment variables
 
 In the Vercel dashboard: **Project → Settings → Environment Variables**,
-add all six, then redeploy (or run `vercel --prod` again):
+add these, then redeploy (or run `vercel --prod` again):
 
 | Name                          | Value                                              |
 |-------------------------------|------------------------------------------------------|
@@ -39,6 +39,7 @@ add all six, then redeploy (or run `vercel --prod` again):
 | `VAPID_PUBLIC_KEY`            | see "Push notification setup" below                |
 | `VAPID_PRIVATE_KEY`           | see "Push notification setup" below — keep secret  |
 | `VAPID_SUBJECT`               | `mailto:you@example.com` (any contact address)     |
+| `ANTHROPIC_API_KEY`           | optional — only needed for AI photo scoring, see below |
 
 If using the CLI instead:
 ```bash
@@ -48,12 +49,31 @@ vercel env add ADMIN_PASSWORD
 vercel env add VAPID_PUBLIC_KEY
 vercel env add VAPID_PRIVATE_KEY
 vercel env add VAPID_SUBJECT
+vercel env add ANTHROPIC_API_KEY
 vercel --prod
 ```
 
 None of these are written into the code or the repo — they only exist
 as environment variables, so they're not visible to anyone browsing
 your source (e.g. if the repo is ever public).
+
+### AI photo scoring setup (optional)
+
+The Admin panel can score every photo for creativity/beauty using
+Claude's vision API, purely as a fun "🤖 AI's Pick" badge — this is
+entirely optional and everything else works fine without it.
+
+1. Create a key at https://console.anthropic.com/settings/keys (this
+   is separate from any Claude subscription — it's billed per use,
+   pay-as-you-go).
+2. Add it as `ANTHROPIC_API_KEY` above.
+3. That's it — the "🤖 Score photos with AI" button in Admin will work
+   from then on.
+
+Cost is small: scoring ~20-80 photos with the cheap Haiku model this
+uses typically comes out to well under a dollar total. If the key
+isn't set, the button will show a clear error instead of failing
+silently, and nothing else in the app is affected.
 
 ### Push notification setup (VAPID keys)
 
@@ -167,6 +187,15 @@ the server the whole time.
   shuffles *whose* group appears first — freshly randomized every time
   the page loads — so no single person's photos are always sitting at
   the top.
+- **AI photo scoring** (optional, needs `ANTHROPIC_API_KEY`): an Admin
+  button scores every photo for creativity/beauty using Claude's
+  vision API, and the single highest-scored photo gets a small
+  "🤖 AI's Pick" badge in the gallery. This is entirely separate from
+  the human star ratings — different storage key (`ai-scores`,
+  read-only outside the admin endpoint), never blended into anyone's
+  average, purely a fun side badge. Scoring happens in small batches
+  (a few photos per request) so it can't time out on a large gallery;
+  the Admin panel also shows every photo's score for transparency.
 - **Close app button** now sits in its own row just above "My entries"
   (was previously all the way down in the footer with Admin/notify
   settings) — easier to find without scrolling past every photo.

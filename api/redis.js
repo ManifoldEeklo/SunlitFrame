@@ -40,6 +40,7 @@ function isDataKeyAllowed(key, cmdName) {
   if (typeof key === 'string' && key.startsWith('photo:')) return true;
   if (isPresenceKeyAllowed(key)) return true;
   if (key === 'app:users' && cmdName === 'GET') return true;
+  if (key === 'ai-scores' && cmdName === 'GET') return true;
   if (isRatingKeyAllowed(key) && cmdName === 'DEL') return true; // cleanup when a photo is removed
   return false;
 }

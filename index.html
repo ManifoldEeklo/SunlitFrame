@@ -204,6 +204,18 @@
     padding: 3px 7px;
     border-radius: 5px;
   }
+  .ai-pick-badge {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: linear-gradient(135deg, #7c5cff, #5a3fd6);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    z-index: 1;
+  }
   .rate-widget { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
   .rate-stars {
     display: flex;
@@ -362,6 +374,8 @@
     padding-top: 16px;
     border-top: 1px solid var(--line);
   }
+  .admin-ai-count { font-weight: 400; color: var(--ink-dim); font-size: 11.5px; }
+  .admin-ai-note { font-size: 11.5px; color: var(--ink-dim); line-height: 1.5; margin: 0; }
   .admin-ratings-list { display: flex; flex-direction: column; gap: 14px; }
   .admin-owner-group {
     background: var(--panel-2);
@@ -394,6 +408,11 @@
   }
   .admin-rating-detail { font-size: 12px; color: var(--ink-dim); line-height: 1.6; padding-top: 2px; }
   .admin-rating-detail em { font-style: italic; opacity: 0.7; }
+  .admin-ai-list { display: flex; flex-direction: column; gap: 10px; }
+  .admin-ai-photo-row { display: flex; align-items: flex-start; gap: 10px; }
+  .admin-ai-detail { font-size: 12px; color: var(--ink-dim); line-height: 1.6; padding-top: 2px; }
+  .admin-ai-detail em { font-style: italic; opacity: 0.7; }
+  .admin-ai-detail strong { color: #ffd27a; }
 
   .toast { position: fixed; bottom: calc(22px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 10px 18px; border-radius: 4px; font-size: 13.5px; z-index: 1001; max-width: 90vw; text-align: center; }
 
@@ -783,6 +802,10 @@
     pushStatus: 'unknown', // 'unknown' | 'unsupported' | 'ios-needs-install' | 'default' | 'enabled' | 'denied'
     pushBusy: false,
     ratings: {}, // photoId -> { username: 1-5, ... }
+    aiScores: {}, // photoId -> { score, note, owner, scoredAt }
+    aiScoreBusy: false,
+    aiScoreProgress: null, // { scoredSoFar, totalPhotos } while a batch run is in progress
+    aiScoreError: null,
   };
 
   // --- User roster: stored server-side, editable via the Admin panel ---
@@ -1573,6 +1596,30 @@
       showToast('Could not load the gallery: ' + e.message);
     }
     await loadRatingsFor(state.index.map(p => p.id));
+    await loadAiScores();
+  }
+
+  // --- AI scoring: a fun supplementary "AI's pick" badge on the single
+  // highest-scored photo. Entirely separate from the human star ratings —
+  // never reads or writes rating:<id>, just its own ai-scores blob.
+  // Scoring itself only happens via the Admin panel (costs real API money).
+  async function loadAiScores() {
+    try {
+      const raw = await redisGet('ai-scores');
+      state.aiScores = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      state.aiScores = state.aiScores || {};
+    }
+  }
+  function topAiPickId() {
+    let bestId = null, bestScore = -1;
+    for (const [id, entry] of Object.entries(state.aiScores || {})) {
+      if (entry && typeof entry.score === 'number' && entry.score > bestScore) {
+        bestScore = entry.score;
+        bestId = id;
+      }
+    }
+    return bestId;
   }
 
   // --- Ratings: 1-5 stars per photo, stored as a Redis hash (rating:<photoId>
@@ -1904,9 +1951,11 @@
   function photoCardHtml(photo, i, isOwn) {
     const rotate = (i % 2 === 0 ? -1.5 : 1.5) + (i % 3 === 0 ? 0.5 : 0);
     const { avg, count } = ratingStats(photo.id);
+    const isAiPick = photo.id === topAiPickId();
     return `
       <div class="photo-card" style="transform: rotate(${rotate}deg)" data-photo-id="${photo.id}">
         ${isOwn ? `<button class="delete-btn" data-delete-id="${photo.id}" title="Remove">✕</button>` : ''}
+        ${isAiPick ? `<div class="ai-pick-badge" title="Highest AI creativity/beauty score">🤖 AI's Pick</div>` : ''}
         <img data-img-id="${photo.id}" alt="Vacation entry" />
         <div class="photo-owner-tag">${escapeHtml(photo.owner)}</div>
         ${count ? `<div class="rating-badge">★ ${avg.toFixed(1)}</div>` : ''}
@@ -1973,6 +2022,35 @@
         <button type="submit" class="primary" style="width:auto;margin-top:0;" ${state.adminBusy ? 'disabled' : ''}>Add</button>
       </form>
       ${adminRatingsHtml()}
+      ${adminAiScoreHtml()}
+    `;
+  }
+
+  function adminAiScoreHtml() {
+    const scoredCount = Object.keys(state.aiScores || {}).length;
+    const totalCount = state.index.length;
+    const entries = Object.entries(state.aiScores || {})
+      .map(([id, entry]) => ({ id, ...entry }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    const rows = entries.map((entry, i) => `
+      <div class="admin-ai-photo-row">
+        <img class="admin-rating-thumb" data-img-id="${entry.id}" alt="" />
+        <div class="admin-ai-detail">
+          ${i === 0 ? '🤖 ' : ''}<strong>${entry.score.toFixed(1)}</strong> — ${escapeHtml(entry.owner || '')}'s photo
+          ${entry.note ? `<br><em>${escapeHtml(entry.note)}</em>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <h3 class="admin-subheading">AI judging <span class="admin-ai-count">(${scoredCount}/${totalCount} scored)</span></h3>
+      <p class="admin-ai-note">Scores every photo for creativity/beauty using Claude's vision API — a fun side badge only, completely separate from everyone's star ratings. Costs a small amount via your ANTHROPIC_API_KEY.</p>
+      ${state.aiScoreError ? `<div class="modal-error">${escapeHtml(state.aiScoreError)}</div>` : ''}
+      <button class="primary" id="admin-ai-score-btn" style="margin-top:8px;" ${state.aiScoreBusy ? 'disabled' : ''}>
+        ${state.aiScoreBusy ? `Scoring… (${state.aiScoreProgress ? state.aiScoreProgress.scoredSoFar : scoredCount}/${totalCount})` : (scoredCount >= totalCount && totalCount > 0 ? 'Re-score all photos' : '🤖 Score photos with AI')}
+      </button>
+      ${entries.length ? `<div class="admin-ai-list" style="margin-top:12px;">${rows}</div>` : ''}
     `;
   }
 
@@ -2142,7 +2220,7 @@
         state.showAdmin = true;
         state.adminError = null;
         render();
-        if (state.adminUnlocked) loadRatingsFor(state.index.map(p => p.id)).then(render);
+        if (state.adminUnlocked) Promise.all([loadRatingsFor(state.index.map(p => p.id)), loadAiScores()]).then(render);
       };
     }
     const adminCancel = document.getElementById('admin-cancel');
@@ -2169,6 +2247,7 @@
           state.adminPasswordCache = pwd;
           await loadUsersList();
           await loadRatingsFor(state.index.map(p => p.id));
+          await loadAiScores();
         } catch (e) {
           state.adminError = e.message;
         }
@@ -2202,6 +2281,37 @@
         state.adminBusy = false;
         render();
       });
+    }
+
+    const aiScoreBtn = document.getElementById('admin-ai-score-btn');
+    if (aiScoreBtn) {
+      aiScoreBtn.onclick = async () => {
+        state.aiScoreBusy = true;
+        state.aiScoreError = null;
+        state.aiScoreProgress = null;
+        render();
+        try {
+          let remaining = 1;
+          while (remaining > 0) {
+            const res = await fetch('/api/ai-score', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password: state.adminPasswordCache, batchSize: 4 }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+            await loadAiScores();
+            remaining = data.remaining;
+            state.aiScoreProgress = { scoredSoFar: data.scoredSoFar, totalPhotos: data.totalPhotos };
+            render();
+          }
+        } catch (e) {
+          state.aiScoreError = e.message;
+        }
+        state.aiScoreBusy = false;
+        state.aiScoreProgress = null;
+        render();
+      };
     }
 
     root.querySelectorAll('[data-admin-remove]').forEach(btn => {
