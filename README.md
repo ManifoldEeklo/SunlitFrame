@@ -200,15 +200,17 @@ the server the whole time.
   signed in as **Jurgen**. This is a *fake* jury for show — it makes
   **no API calls of its own** and needs no password. It purely
   replays scores that were already computed via the Admin panel's
-  "Score photos with AI" button, counting up from the lowest score to
-  the highest for suspense: each photo takes center stage big in a
-  "spotlight," a scanning animation runs for a beat (pure theater —
-  the score is already known), then it pops in with a bounce and
-  settles into a filmstrip below before the next photo takes over.
-  Finishes with the actual highest-scored photo as the big reveal —
-  confetti, fanfare, the works. If nothing's been scored yet, it tells
-  Jurgen to run the Admin scoring button first instead of doing
-  nothing silently.
+  "Score photos with AI" button, in **random order** for suspense.
+  Each photo takes center stage big in a "spotlight" with a rotating
+  dashed ring and a pulsing 🤖 badge — "the AI is investigating" —
+  held for a full **3 seconds** before the score pops in alongside a
+  random fun emoji (😎🥳🤣🌞...), stays visible for a couple more
+  seconds so it's actually readable, then settles into a filmstrip
+  below as the next photo takes over. Finishes with the actual
+  highest-scored photo framed in a gold medal border with a 🥇 medal
+  and the winner's name — confetti, fanfare, the works. If nothing's
+  been scored yet, it tells Jurgen to run the Admin scoring button
+  first instead of doing nothing silently.
 - **Close app button** now sits in its own row just above "My entries"
   (was previously all the way down in the footer with Admin/notify
   settings) — easier to find without scrolling past every photo.

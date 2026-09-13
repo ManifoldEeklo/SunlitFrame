@@ -506,19 +506,36 @@
     width: min(60vw, 230px);
     height: min(60vw, 230px);
     border-radius: 16px;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 16px 44px rgba(0,0,0,0.55);
     background: var(--panel-2);
   }
-  .ai-jury-spotlight img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .ai-jury-spotlight-scan {
-    position: absolute; inset: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(124,92,255,0.6) 45%, transparent 100%);
-    background-size: 100% 220%;
+  .ai-jury-spotlight img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 16px; }
+  .ai-jury-spotlight-ring {
+    position: absolute;
+    inset: -10px;
+    border-radius: 22px;
+    border: 3px dashed rgba(124,92,255,0.75);
     opacity: 0;
     pointer-events: none;
   }
-  .ai-jury-spotlight-scan.active { opacity: 1; animation: aiScan 0.9s linear infinite; }
+  .ai-jury-spotlight-ring.active { opacity: 1; animation: aiRingSpin 3s linear infinite; }
+  @keyframes aiRingSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .ai-jury-spotlight-badge {
+    position: absolute;
+    top: -14px; right: -14px;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c5cff, #5a3fd6);
+    color: #fff;
+    font-size: 19px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ai-jury-spotlight-badge.active { opacity: 1; animation: aiBadgePulse 1s ease-in-out infinite; }
+  @keyframes aiBadgePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
   .ai-jury-spotlight-score {
     position: absolute; bottom: 0; left: 0; width: 100%;
     background: rgba(10,10,20,0.82);
@@ -527,6 +544,7 @@
     font-weight: 800;
     font-size: 22px;
     padding: 12px 10px 10px;
+    border-radius: 0 0 16px 16px;
     transform: translateY(100%);
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -546,7 +564,6 @@
   .ai-jury-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block; box-shadow: 0 6px 16px rgba(0,0,0,0.4); background: var(--panel-2); }
   .ai-jury-card.active { opacity: 1; transform: scale(1.18); z-index: 2; }
   .ai-jury-card.done { opacity: 0.85; transform: scale(0.92); }
-  @keyframes aiScan { from { background-position: 0 -220%; } to { background-position: 0 220%; } }
   .ai-jury-score-pop {
     position: absolute;
     bottom: -10px; left: 50%;
@@ -562,13 +579,34 @@
   }
   @keyframes scorePop { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
   .ai-jury-verdict { text-align: center; }
-  .ai-jury-verdict img {
+  .ai-jury-verdict-frame {
+    position: relative;
+    display: inline-block;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #f9e79f, #d4af37 45%, #b8860b 70%, #f9e79f);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    animation: verdictPop 0.5s cubic-bezier(0.22, 0.9, 0.3, 1.2);
+  }
+  .ai-jury-verdict-frame img {
     width: 180px; height: 180px;
     object-fit: cover;
-    border-radius: 14px;
-    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
-    margin-bottom: 14px;
-    animation: verdictPop 0.5s cubic-bezier(0.22, 0.9, 0.3, 1.2);
+    border-radius: 12px;
+    display: block;
+    box-shadow: inset 0 0 0 3px rgba(0,0,0,0.15);
+  }
+  .ai-jury-verdict-medal {
+    position: absolute;
+    top: -20px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 46px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+    animation: medalDrop 0.6s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes medalDrop {
+    from { transform: translateX(-50%) translateY(-26px) scale(0.4); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
   }
   @keyframes verdictPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .ai-jury-verdict-title { font-family: Georgia, serif; font-size: 19px; color: #ffd27a; margin-bottom: 6px; }
@@ -1363,8 +1401,9 @@
     if (state.username !== 'Jurgen' || aiJuryActive) return;
     aiJuryActive = true;
     await loadAiScores(); // make sure we're replaying whatever Admin most recently scored
-    renderAiJuryShell();
-    runAiJury();
+    const entries = scoredEntriesForJury(); // shuffled once, shared by both the strip and the judging loop
+    renderAiJuryShell(entries);
+    runAiJury(entries);
   }
 
   function closeAiJury() {
@@ -1373,25 +1412,28 @@
     if (container) container.innerHTML = '';
   }
 
-  function scoredEntriesAscending() {
-    return Object.entries(state.aiScores || {})
-      .map(([id, entry]) => ({ id, ...entry }))
-      .filter(e => typeof e.score === 'number')
-      .sort((a, b) => a.score - b.score);
+  const AI_JURY_FUN_EMOJIS = ['😊', '😎', '🤩', '🥳', '😁', '🤣', '🌞', '🏖️', '🍹', '👏', '🔥', '✨'];
+
+  function scoredEntriesForJury() {
+    return shuffleArray(
+      Object.entries(state.aiScores || {})
+        .map(([id, entry]) => ({ id, ...entry }))
+        .filter(e => typeof e.score === 'number')
+    );
   }
 
-  function renderAiJuryShell() {
+  function renderAiJuryShell(entries) {
     const container = document.getElementById('ai-jury-root');
     if (!container) return;
-    const entries = scoredEntriesAscending();
     container.innerHTML = `
       <div class="ai-jury-screen">
         <button class="ai-jury-close" id="ai-jury-close-btn">✕</button>
         <div class="ai-jury-title">⚖️ The AI Jury is in session</div>
-        <div class="ai-jury-status" id="ai-jury-status">Counting up the scores…</div>
+        <div class="ai-jury-status" id="ai-jury-status">Reviewing every entry…</div>
         <div class="ai-jury-spotlight" id="ai-jury-spotlight">
           <img id="ai-jury-spotlight-img" alt="" />
-          <div class="ai-jury-spotlight-scan" id="ai-jury-spotlight-scan"></div>
+          <div class="ai-jury-spotlight-ring" id="ai-jury-spotlight-ring"></div>
+          <div class="ai-jury-spotlight-badge" id="ai-jury-spotlight-badge">🤖</div>
           <div class="ai-jury-spotlight-score" id="ai-jury-spotlight-score"></div>
         </div>
         <div class="ai-jury-strip-wrap">
@@ -1408,6 +1450,7 @@
     const closeBtn = document.getElementById('ai-jury-close-btn');
     if (closeBtn) closeBtn.onclick = closeAiJury;
     hydrateAiJuryThumbs();
+    return entries;
   }
 
   function hydrateAiJuryThumbs() {
@@ -1447,36 +1490,38 @@
     card.appendChild(pop);
   }
 
-  // Puts a photo up big in the spotlight, runs the "deliberating" scan
-  // animation on it for a beat (pure suspense — the score is already known),
-  // then resolves so the caller can reveal it.
+  // Puts a photo up big in the spotlight with the "AI is investigating"
+  // ring + badge running. Doesn't wait on its own — the caller controls
+  // the full 3-second investigating duration explicitly.
   async function showSpotlightPhoto(photoId) {
     const img = document.getElementById('ai-jury-spotlight-img');
-    const scan = document.getElementById('ai-jury-spotlight-scan');
+    const ring = document.getElementById('ai-jury-spotlight-ring');
+    const badge = document.getElementById('ai-jury-spotlight-badge');
     const scoreEl = document.getElementById('ai-jury-spotlight-score');
     if (scoreEl) scoreEl.classList.remove('revealed');
-    if (scan) scan.classList.add('active');
+    if (ring) ring.classList.add('active');
+    if (badge) badge.classList.add('active');
     if (img) {
       const data = await getPhotoData(photoId);
       if (data) img.src = data;
     }
     setActiveJuryCard(photoId);
-    await new Promise(r => setTimeout(r, 950));
   }
 
-  function revealSpotlightScore(score, note) {
-    const scan = document.getElementById('ai-jury-spotlight-scan');
+  function revealSpotlightScore(score, note, emoji) {
+    const ring = document.getElementById('ai-jury-spotlight-ring');
+    const badge = document.getElementById('ai-jury-spotlight-badge');
     const scoreEl = document.getElementById('ai-jury-spotlight-score');
-    if (scan) scan.classList.remove('active');
+    if (ring) ring.classList.remove('active');
+    if (badge) badge.classList.remove('active');
     if (scoreEl) {
-      scoreEl.innerHTML = `★ ${score.toFixed(1)}` + (note ? `<div class="ai-jury-spotlight-note">"${escapeHtml(note)}"</div>` : '');
+      scoreEl.innerHTML = `${emoji} ★ ${score.toFixed(1)}` + (note ? `<div class="ai-jury-spotlight-note">"${escapeHtml(note)}"</div>` : '');
       scoreEl.classList.add('revealed');
     }
   }
 
-  async function runAiJury() {
+  async function runAiJury(entries) {
     const statusEl = () => document.getElementById('ai-jury-status');
-    const entries = scoredEntriesAscending();
 
     if (!entries.length) {
       if (statusEl()) statusEl().textContent = 'Nothing scored yet — use "Score photos with AI" in Admin first.';
@@ -1487,14 +1532,18 @@
       if (!aiJuryActive) return; // closed early
       const photo = state.index.find(p => p.id === entry.id);
       const ownerName = photo ? photo.owner : (entry.owner || 'Someone');
-      if (statusEl()) statusEl().textContent = `Deliberating on ${ownerName}'s photo…`;
+      if (statusEl()) statusEl().textContent = `🤖 AI is investigating ${ownerName}'s photo…`;
 
       await showSpotlightPhoto(entry.id);
       if (!aiJuryActive) return;
 
-      revealSpotlightScore(entry.score, entry.note);
-      if (statusEl()) statusEl().textContent = `${ownerName}'s photo: ★ ${entry.score.toFixed(1)}`;
-      await new Promise(r => setTimeout(r, 1100));
+      await new Promise(r => setTimeout(r, 3000)); // the full 3 seconds of "investigating"
+      if (!aiJuryActive) return;
+
+      const emoji = AI_JURY_FUN_EMOJIS[Math.floor(Math.random() * AI_JURY_FUN_EMOJIS.length)];
+      revealSpotlightScore(entry.score, entry.note, emoji);
+      if (statusEl()) statusEl().textContent = `${ownerName}'s photo: ★ ${entry.score.toFixed(1)} ${emoji}`;
+      await new Promise(r => setTimeout(r, 1700)); // hold the reveal so it's actually readable
       if (!aiJuryActive) return;
 
       markJuryCardDone(entry.id, entry.score);
@@ -1527,8 +1576,11 @@
           <button class="ai-jury-close" id="ai-jury-close-btn">✕</button>
           <div class="ai-jury-title">⚖️ The verdict is in!</div>
           <div class="ai-jury-verdict">
-            <img id="ai-jury-verdict-img" alt="" />
-            <div class="ai-jury-verdict-title">🏆 ${escapeHtml(photo ? photo.owner : '')}'s photo — ★ ${entry.score.toFixed(1)}</div>
+            <div class="ai-jury-verdict-frame">
+              <div class="ai-jury-verdict-medal">🥇</div>
+              <img id="ai-jury-verdict-img" alt="" />
+            </div>
+            <div class="ai-jury-verdict-title">${escapeHtml(photo ? photo.owner : '')} wins! — ★ ${entry.score.toFixed(1)}</div>
             ${entry.note ? `<div class="ai-jury-verdict-note">"${escapeHtml(entry.note)}"</div>` : ''}
           </div>
           <button class="ai-jury-done-btn" id="ai-jury-done-btn">Done</button>
