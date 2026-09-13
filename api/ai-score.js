@@ -120,38 +120,49 @@ module.exports = async (req, res) => {
   }
 
   const batchSize = Math.min(MAX_BATCH_SIZE, Math.max(1, Number(body.batchSize) || DEFAULT_BATCH_SIZE));
-  const rescoreAll = !!body.rescoreAll;
 
   try {
     const rawIndex = await upstash(['GET', INDEX_KEY]);
     const index = rawIndex ? JSON.parse(rawIndex) : [];
     const scores = await getAllScores();
+    const photoById = {};
+    index.forEach(p => { photoById[p.id] = p; });
 
-    const unscored = index.filter(p => rescoreAll || !scores[p.id]);
-    const toScore = unscored.slice(0, batchSize);
+    // The client tells us exactly which photo IDs still need doing this run
+    // (whether that's "only the unscored ones" or "literally all of them"
+    // for a re-score) — this sidesteps the ambiguity of trying to infer
+    // progress from whether ai-scores already has an entry, which breaks
+    // down entirely once you're re-scoring things that already have one.
+    let pendingIds = Array.isArray(body.targetIds)
+      ? body.targetIds.filter(id => typeof id === 'string' && photoById[id])
+      : index.filter(p => !scores[p.id]).map(p => p.id); // default: just fill in gaps
+
+    const toScoreIds = pendingIds.slice(0, batchSize);
 
     const results = [];
-    for (const photo of toScore) {
+    for (const id of toScoreIds) {
+      const photo = photoById[id];
       try {
-        const dataUrl = await upstash(['GET', 'photo:' + photo.id]);
+        const dataUrl = await upstash(['GET', 'photo:' + id]);
         if (!dataUrl) continue;
         const { score, note } = await scorePhotoWithClaude(dataUrl, anthropicKey);
         if (score !== null) {
-          scores[photo.id] = { score, note, owner: photo.owner, scoredAt: Date.now() };
-          results.push({ id: photo.id, owner: photo.owner, score, note });
+          scores[id] = { score, note, owner: photo.owner, scoredAt: Date.now() };
+          results.push({ id, owner: photo.owner, score, note });
         }
       } catch (e) {
-        results.push({ id: photo.id, owner: photo.owner, error: String((e && e.message) || e) });
+        results.push({ id, owner: photo ? photo.owner : undefined, error: String((e && e.message) || e) });
       }
     }
 
-    if (toScore.length) await saveAllScores(scores);
+    if (toScoreIds.length) await saveAllScores(scores);
 
-    const remaining = unscored.length - toScore.length;
+    const remainingIds = pendingIds.slice(batchSize);
     res.status(200).json({
       ok: true,
       results,
-      remaining,
+      remainingIds,
+      remaining: remainingIds.length,
       totalPhotos: index.length,
       scoredSoFar: Object.keys(scores).length,
     });
