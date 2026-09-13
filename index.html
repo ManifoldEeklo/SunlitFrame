@@ -505,12 +505,16 @@
     position: relative;
     width: min(60vw, 230px);
     height: min(60vw, 230px);
+  }
+  .ai-jury-spotlight-inner {
+    position: relative;
+    width: 100%; height: 100%;
     border-radius: 16px;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 16px 44px rgba(0,0,0,0.55);
     background: var(--panel-2);
   }
-  .ai-jury-spotlight img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 16px; }
+  .ai-jury-spotlight-inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ai-jury-spotlight-ring {
     position: absolute;
     inset: -10px;
@@ -1431,10 +1435,12 @@
         <div class="ai-jury-title">⚖️ The AI Jury is in session</div>
         <div class="ai-jury-status" id="ai-jury-status">Reviewing every entry…</div>
         <div class="ai-jury-spotlight" id="ai-jury-spotlight">
-          <img id="ai-jury-spotlight-img" alt="" />
+          <div class="ai-jury-spotlight-inner">
+            <img id="ai-jury-spotlight-img" alt="" />
+            <div class="ai-jury-spotlight-score" id="ai-jury-spotlight-score"></div>
+          </div>
           <div class="ai-jury-spotlight-ring" id="ai-jury-spotlight-ring"></div>
           <div class="ai-jury-spotlight-badge" id="ai-jury-spotlight-badge">🤖</div>
-          <div class="ai-jury-spotlight-score" id="ai-jury-spotlight-score"></div>
         </div>
         <div class="ai-jury-strip-wrap">
           <div class="ai-jury-strip" id="ai-jury-strip">
@@ -1498,10 +1504,14 @@
     const ring = document.getElementById('ai-jury-spotlight-ring');
     const badge = document.getElementById('ai-jury-spotlight-badge');
     const scoreEl = document.getElementById('ai-jury-spotlight-score');
-    if (scoreEl) scoreEl.classList.remove('revealed');
+    if (scoreEl) {
+      scoreEl.classList.remove('revealed');
+      scoreEl.innerHTML = ''; // wipe any previous photo's score immediately, not just visually hide it
+    }
     if (ring) ring.classList.add('active');
     if (badge) badge.classList.add('active');
     if (img) {
+      img.src = ''; // clear the previous photo instantly rather than showing it mid-transition
       const data = await getPhotoData(photoId);
       if (data) img.src = data;
     }
@@ -1532,12 +1542,12 @@
       if (!aiJuryActive) return; // closed early
       const photo = state.index.find(p => p.id === entry.id);
       const ownerName = photo ? photo.owner : (entry.owner || 'Someone');
-      if (statusEl()) statusEl().textContent = `🤖 AI is investigating ${ownerName}'s photo…`;
 
       await showSpotlightPhoto(entry.id);
       if (!aiJuryActive) return;
+      if (statusEl()) statusEl().textContent = `🤖 Scoring ${ownerName}'s photo…`;
 
-      await new Promise(r => setTimeout(r, 3000)); // the full 3 seconds of "investigating"
+      await new Promise(r => setTimeout(r, 3000)); // the full 3 seconds of "investigating" — no score shown at all during this
       if (!aiJuryActive) return;
 
       const emoji = AI_JURY_FUN_EMOJIS[Math.floor(Math.random() * AI_JURY_FUN_EMOJIS.length)];
