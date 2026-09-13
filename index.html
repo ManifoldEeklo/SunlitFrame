@@ -501,16 +501,37 @@
   }
   .ai-jury-title { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-size: 22px; color: var(--ink); text-align: center; }
   .ai-jury-status { font-size: 14px; color: var(--ink-dim); min-height: 20px; text-align: center; padding: 0 10px; }
-  .ai-jury-password-input {
-    max-width: 220px;
-    padding: 10px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    background: var(--page-bg);
-    color: var(--ink);
-    font-size: 16px;
-    font-family: inherit;
+  .ai-jury-spotlight {
+    position: relative;
+    width: min(60vw, 230px);
+    height: min(60vw, 230px);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 16px 44px rgba(0,0,0,0.55);
+    background: var(--panel-2);
   }
+  .ai-jury-spotlight img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ai-jury-spotlight-scan {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(124,92,255,0.6) 45%, transparent 100%);
+    background-size: 100% 220%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ai-jury-spotlight-scan.active { opacity: 1; animation: aiScan 0.9s linear infinite; }
+  .ai-jury-spotlight-score {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+    background: rgba(10,10,20,0.82);
+    color: #ffd27a;
+    text-align: center;
+    font-weight: 800;
+    font-size: 22px;
+    padding: 12px 10px 10px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .ai-jury-spotlight-score.revealed { transform: translateY(0); }
+  .ai-jury-spotlight-note { font-size: 11.5px; color: var(--ink-dim); font-style: italic; font-weight: 400; margin-top: 3px; }
   .ai-jury-strip-wrap { width: 100%; max-width: 640px; overflow: hidden; padding: 34px 0; }
   .ai-jury-strip { display: flex; gap: 14px; transition: transform 0.55s cubic-bezier(0.22, 0.9, 0.3, 1.05); will-change: transform; }
   .ai-jury-card {
@@ -525,14 +546,6 @@
   .ai-jury-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block; box-shadow: 0 6px 16px rgba(0,0,0,0.4); background: var(--panel-2); }
   .ai-jury-card.active { opacity: 1; transform: scale(1.18); z-index: 2; }
   .ai-jury-card.done { opacity: 0.85; transform: scale(0.92); }
-  .ai-jury-scanline {
-    position: absolute; inset: 0;
-    border-radius: 10px;
-    background: linear-gradient(180deg, transparent 0%, rgba(124,92,255,0.6) 45%, transparent 100%);
-    background-size: 100% 220%;
-    animation: aiScan 1s linear infinite;
-    pointer-events: none;
-  }
   @keyframes aiScan { from { background-position: 0 -220%; } to { background-position: 0 220%; } }
   .ai-jury-score-pop {
     position: absolute;
@@ -1338,80 +1351,54 @@
     if (reopenBtn) reopenBtn.onclick = () => location.reload();
   }
 
-  // --- AI Jury: a playful full-screen "photo album" judging show.
-  // Visible only to Jurgen (client-side, matching the rest of this app's
-  // trust model), but still requires the real admin password before it'll
-  // actually spend API money — the button just decides who *sees* the
-  // option, not who's allowed to authorize a paid action.
+  // --- AI Jury: a playful full-screen replay of scores that were ALREADY
+  // computed via the Admin panel's "Score photos with AI" button. This
+  // makes no API calls of its own and needs no password — it's purely a
+  // fun presentation for the contestants to watch, counting up from the
+  // lowest score to the highest for a bit of suspense before the winner.
+  // Visible only to Jurgen, client-side, matching the rest of this app.
   let aiJuryActive = false;
 
-  function openAiJury() {
+  async function openAiJury() {
     if (state.username !== 'Jurgen' || aiJuryActive) return;
     aiJuryActive = true;
-    if (!state.adminPasswordCache) {
-      renderAiJuryPasswordPrompt();
-    } else {
-      renderAiJuryShell();
-      runAiJury();
-    }
+    await loadAiScores(); // make sure we're replaying whatever Admin most recently scored
+    renderAiJuryShell();
+    runAiJury();
   }
 
   function closeAiJury() {
     aiJuryActive = false;
     const container = document.getElementById('ai-jury-root');
     if (container) container.innerHTML = '';
-    render(); // pick up any newly-scored photos / the AI pick badge
   }
 
-  function renderAiJuryPasswordPrompt() {
-    const container = document.getElementById('ai-jury-root');
-    if (!container) return;
-    container.innerHTML = `
-      <div class="ai-jury-screen">
-        <button class="ai-jury-close" id="ai-jury-close-btn">✕</button>
-        <div class="ai-jury-title">⚖️ AI Jury</div>
-        <div class="ai-jury-status">This uses paid AI credits — enter the admin password to begin.</div>
-        <input type="password" id="ai-jury-password-input" class="ai-jury-password-input" placeholder="Admin password" autocomplete="off" />
-        <div class="modal-error" id="ai-jury-password-error"></div>
-        <button class="ai-jury-done-btn" id="ai-jury-password-submit">Unlock &amp; Begin</button>
-      </div>
-    `;
-    const closeBtn = document.getElementById('ai-jury-close-btn');
-    if (closeBtn) closeBtn.onclick = closeAiJury;
-    const input = document.getElementById('ai-jury-password-input');
-    input.focus();
-    const submit = async () => {
-      const pwd = input.value;
-      if (!pwd) return;
-      try {
-        await adminCall({ action: 'verify', password: pwd });
-        state.adminPasswordCache = pwd;
-        state.adminUnlocked = true; // nice side effect: also unlocks the regular Admin panel
-        renderAiJuryShell();
-        runAiJury();
-      } catch (e) {
-        const err = document.getElementById('ai-jury-password-error');
-        if (err) err.textContent = e.message;
-      }
-    };
-    document.getElementById('ai-jury-password-submit').onclick = submit;
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+  function scoredEntriesAscending() {
+    return Object.entries(state.aiScores || {})
+      .map(([id, entry]) => ({ id, ...entry }))
+      .filter(e => typeof e.score === 'number')
+      .sort((a, b) => a.score - b.score);
   }
 
   function renderAiJuryShell() {
     const container = document.getElementById('ai-jury-root');
     if (!container) return;
-    const photos = state.index.slice();
+    const entries = scoredEntriesAscending();
     container.innerHTML = `
       <div class="ai-jury-screen">
         <button class="ai-jury-close" id="ai-jury-close-btn">✕</button>
         <div class="ai-jury-title">⚖️ The AI Jury is in session</div>
-        <div class="ai-jury-status" id="ai-jury-status">Reviewing every entry…</div>
+        <div class="ai-jury-status" id="ai-jury-status">Counting up the scores…</div>
+        <div class="ai-jury-spotlight" id="ai-jury-spotlight">
+          <img id="ai-jury-spotlight-img" alt="" />
+          <div class="ai-jury-spotlight-scan" id="ai-jury-spotlight-scan"></div>
+          <div class="ai-jury-spotlight-score" id="ai-jury-spotlight-score"></div>
+        </div>
         <div class="ai-jury-strip-wrap">
           <div class="ai-jury-strip" id="ai-jury-strip">
-            ${photos.map(p => `
-              <div class="ai-jury-card" data-jury-photo-id="${p.id}">
-                <img data-jury-img-id="${p.id}" alt="" />
+            ${entries.map(e => `
+              <div class="ai-jury-card" data-jury-photo-id="${e.id}">
+                <img data-jury-img-id="${e.id}" alt="" />
               </div>
             `).join('')}
           </div>
@@ -1454,56 +1441,67 @@
     if (!card) return;
     card.classList.remove('active');
     card.classList.add('done');
-    const scanline = card.querySelector('.ai-jury-scanline');
-    if (scanline) scanline.remove();
     const pop = document.createElement('div');
     pop.className = 'ai-jury-score-pop';
     pop.textContent = '★ ' + score.toFixed(1);
     card.appendChild(pop);
   }
 
+  // Puts a photo up big in the spotlight, runs the "deliberating" scan
+  // animation on it for a beat (pure suspense — the score is already known),
+  // then resolves so the caller can reveal it.
+  async function showSpotlightPhoto(photoId) {
+    const img = document.getElementById('ai-jury-spotlight-img');
+    const scan = document.getElementById('ai-jury-spotlight-scan');
+    const scoreEl = document.getElementById('ai-jury-spotlight-score');
+    if (scoreEl) scoreEl.classList.remove('revealed');
+    if (scan) scan.classList.add('active');
+    if (img) {
+      const data = await getPhotoData(photoId);
+      if (data) img.src = data;
+    }
+    setActiveJuryCard(photoId);
+    await new Promise(r => setTimeout(r, 950));
+  }
+
+  function revealSpotlightScore(score, note) {
+    const scan = document.getElementById('ai-jury-spotlight-scan');
+    const scoreEl = document.getElementById('ai-jury-spotlight-score');
+    if (scan) scan.classList.remove('active');
+    if (scoreEl) {
+      scoreEl.innerHTML = `★ ${score.toFixed(1)}` + (note ? `<div class="ai-jury-spotlight-note">"${escapeHtml(note)}"</div>` : '');
+      scoreEl.classList.add('revealed');
+    }
+  }
+
   async function runAiJury() {
-    const photos = state.index.slice();
     const statusEl = () => document.getElementById('ai-jury-status');
-    if (!photos.length) {
-      if (statusEl()) statusEl().textContent = 'No photos to judge yet.';
+    const entries = scoredEntriesAscending();
+
+    if (!entries.length) {
+      if (statusEl()) statusEl().textContent = 'Nothing scored yet — use "Score photos with AI" in Admin first.';
       return;
     }
 
-    let unscored = photos.filter(p => !state.aiScores[p.id]);
-
-    for (const photo of unscored) {
+    for (const entry of entries) {
       if (!aiJuryActive) return; // closed early
-      if (statusEl()) statusEl().textContent = `Judging ${photo.owner}'s photo…`;
-      const card = setActiveJuryCard(photo.id);
-      if (card && !card.querySelector('.ai-jury-scanline')) {
-        const scan = document.createElement('div');
-        scan.className = 'ai-jury-scanline';
-        card.appendChild(scan);
-      }
-      try {
-        const res = await fetch('/api/ai-score', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: state.adminPasswordCache, batchSize: 1 }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Scoring failed');
-        await loadAiScores();
-        const scored = (data.results || [])[0];
-        const finalScore = (scored && typeof scored.score === 'number')
-          ? scored.score
-          : (state.aiScores[photo.id] ? state.aiScores[photo.id].score : 0);
-        markJuryCardDone(photo.id, finalScore);
-      } catch (e) {
-        if (statusEl()) statusEl().textContent = 'Could not finish judging: ' + e.message;
-        return;
-      }
-      await new Promise(r => setTimeout(r, 700));
+      const photo = state.index.find(p => p.id === entry.id);
+      const ownerName = photo ? photo.owner : (entry.owner || 'Someone');
+      if (statusEl()) statusEl().textContent = `Deliberating on ${ownerName}'s photo…`;
+
+      await showSpotlightPhoto(entry.id);
+      if (!aiJuryActive) return;
+
+      revealSpotlightScore(entry.score, entry.note);
+      if (statusEl()) statusEl().textContent = `${ownerName}'s photo: ★ ${entry.score.toFixed(1)}`;
+      await new Promise(r => setTimeout(r, 1100));
+      if (!aiJuryActive) return;
+
+      markJuryCardDone(entry.id, entry.score);
+      await new Promise(r => setTimeout(r, 300));
       if (!aiJuryActive) return;
     }
 
-    if (!aiJuryActive) return;
     showAiJuryVerdict();
   }
 
@@ -1517,7 +1515,7 @@
         <div class="ai-jury-screen">
           <button class="ai-jury-close" id="ai-jury-close-btn">✕</button>
           <div class="ai-jury-title">⚖️ The jury has no verdict</div>
-          <div class="ai-jury-status">Nothing to judge yet — add some photos first!</div>
+          <div class="ai-jury-status">Nothing scored yet — use "Score photos with AI" in Admin first.</div>
           <button class="ai-jury-done-btn" id="ai-jury-done-btn">Close</button>
         </div>
       `;

@@ -196,16 +196,19 @@ the server the whole time.
   average, purely a fun side badge. Scoring happens in small batches
   (a few photos per request) so it can't time out on a large gallery;
   the Admin panel also shows every photo's score for transparency.
-- **AI Jury** (needs `ANTHROPIC_API_KEY`): a "⚖️ AI Jury" button in the
-  header, visible only when signed in as **Jurgen** — a fun full-screen
-  show where a scrolling photo-album strip highlights each unscored
-  photo one at a time with a scanning animation, pops in its score,
-  then reveals the winner with confetti and a synthesized fanfare. It
-  still asks for the real admin password the first time each session
-  (the username restriction decides who *sees* the button; the
-  password is what actually authorizes spending API money — the two
-  are deliberately separate checks). If everything's already scored,
-  it skips straight to the reveal instead of wasting API calls.
+- **AI Jury**: a "⚖️ AI Jury" button in the header, visible only when
+  signed in as **Jurgen**. This is a *fake* jury for show — it makes
+  **no API calls of its own** and needs no password. It purely
+  replays scores that were already computed via the Admin panel's
+  "Score photos with AI" button, counting up from the lowest score to
+  the highest for suspense: each photo takes center stage big in a
+  "spotlight," a scanning animation runs for a beat (pure theater —
+  the score is already known), then it pops in with a bounce and
+  settles into a filmstrip below before the next photo takes over.
+  Finishes with the actual highest-scored photo as the big reveal —
+  confetti, fanfare, the works. If nothing's been scored yet, it tells
+  Jurgen to run the Admin scoring button first instead of doing
+  nothing silently.
 - **Close app button** now sits in its own row just above "My entries"
   (was previously all the way down in the footer with Admin/notify
   settings) — easier to find without scrolling past every photo.
