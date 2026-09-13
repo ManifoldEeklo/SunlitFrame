@@ -65,7 +65,7 @@ async function scorePhotoWithClaude(dataUrl, apiKey) {
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
           {
             type: 'text',
-            text: 'Rate this vacation photo for creativity and beauty on a scale from 1 to 10 (one decimal place is fine). Respond with ONLY compact JSON, nothing else, in exactly this shape: {"score": 7.5, "note": "short reason, under 10 words"}',
+            text: 'Rate this vacation photo for creativity and beauty on a scale from 1 to 10 (one decimal place is fine). If the photo includes a person, add a small bonus to the score (people make a vacation contest more fun) — keep it modest and realistic, not automatic top marks. Then write a short, playful, wholesome caption of 5 words or fewer describing the main subject or scene (a person\'s activity/mood, an animal, flowers, a landscape feature, etc.) — describe what they\'re doing or the scene itself, never a person\'s looks or appearance. Respond with ONLY compact JSON, nothing else, in exactly this shape: {"score": 7.5, "note": "five words or fewer"}',
           },
         ],
       }],

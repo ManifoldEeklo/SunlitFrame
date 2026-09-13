@@ -1264,6 +1264,37 @@
     }
   }
 
+  // A quick computer-y "now scanning" cue for the AI Jury's investigating
+  // phase — three rising square-wave blips, distinct from the reveal sounds.
+  function playAiInvestigatingSound() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    [660, 740, 830].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const start = now + i * 0.12;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.08, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.12);
+    });
+  }
+
+  // Maps a 0-10 AI score onto the existing 1-5 star sound tiers, so each
+  // AI Jury reveal gets a "victory sound" that scales with how good the
+  // score was — reusing playRatingSound rather than a whole new sound set.
+  function aiScoreToSoundTier(score) {
+    if (score >= 9) return 5;
+    if (score >= 7.5) return 4;
+    if (score >= 6) return 3;
+    if (score >= 4) return 2;
+    return 1;
+  }
+
   function createNoiseBuffer(duration) {
     const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -1551,12 +1582,14 @@
       await showSpotlightPhoto(entry.id);
       if (!aiJuryActive) return;
       if (statusEl()) statusEl().textContent = `🤖 Scoring ${ownerName}'s photo…`;
+      playAiInvestigatingSound();
 
       await new Promise(r => setTimeout(r, 3000)); // the full 3 seconds of "investigating" — no score shown at all during this
       if (!aiJuryActive) return;
 
       const emoji = AI_JURY_FUN_EMOJIS[Math.floor(Math.random() * AI_JURY_FUN_EMOJIS.length)];
       revealSpotlightScore(entry.score, entry.note, emoji);
+      playRatingSound(aiScoreToSoundTier(entry.score)); // "victory sound" scaled to this photo's score
       if (statusEl()) statusEl().textContent = `${ownerName}'s photo: ★ ${entry.score.toFixed(1)} ${emoji}`;
       await new Promise(r => setTimeout(r, 1700)); // hold the reveal so it's actually readable
       if (!aiJuryActive) return;

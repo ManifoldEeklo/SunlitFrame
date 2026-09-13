@@ -190,27 +190,37 @@ the server the whole time.
 - **AI photo scoring** (optional, needs `ANTHROPIC_API_KEY`): an Admin
   button scores every photo for creativity/beauty using Claude's
   vision API, and the single highest-scored photo gets a small
-  "🤖 AI's Pick" badge in the gallery. This is entirely separate from
-  the human star ratings — different storage key (`ai-scores`,
-  read-only outside the admin endpoint), never blended into anyone's
-  average, purely a fun side badge. Scoring happens in small batches
-  (a few photos per request) so it can't time out on a large gallery;
-  the Admin panel also shows every photo's score for transparency.
+  "🤖 AI's Pick" badge in the gallery. Photos with a person in them get
+  a modest score bonus, and every photo gets a short (5 words or
+  fewer) playful caption describing the scene — "happy kid running",
+  "colorful flowers in bloom", "epic mountain view" — deliberately
+  about the *activity/subject*, never a person's looks, since that's
+  not something worth automating even with good intentions. This is
+  entirely separate from the human star ratings — different storage
+  key (`ai-scores`, read-only outside the admin endpoint), never
+  blended into anyone's average, purely a fun side badge. Scoring
+  happens in small batches (a few photos per request) so it can't
+  time out on a large gallery; the Admin panel also shows every
+  photo's score and caption for transparency.
 - **AI Jury**: a "⚖️ AI Jury" button in the header, visible only when
   signed in as **Jurgen**. This is a *fake* jury for show — it makes
   **no API calls of its own** and needs no password. It purely
   replays scores that were already computed via the Admin panel's
   "Score photos with AI" button, in **random order** for suspense.
   Each photo takes center stage big in a "spotlight" with a rotating
-  dashed ring and a pulsing 🤖 badge — "the AI is investigating" —
-  held for a full **3 seconds** before the score pops in alongside a
-  random fun emoji (😎🥳🤣🌞...), stays visible for a couple more
-  seconds so it's actually readable, then settles into a filmstrip
-  below as the next photo takes over. Finishes with the actual
-  highest-scored photo framed in a gold medal border with a 🥇 medal
-  and the winner's name — confetti, fanfare, the works. If nothing's
-  been scored yet, it tells Jurgen to run the Admin scoring button
-  first instead of doing nothing silently.
+  dashed ring and a pulsing 🤖 badge — "the AI is investigating,"
+  with a synthesized scanning sound — held for a full **3 seconds**
+  (showing the literal word "Scoring…" the whole time, never a
+  leftover number from the previous photo) before the score pops in
+  alongside a random fun emoji (😎🥳🤣🌞...) and a "victory sound" whose
+  intensity scales with that photo's score (a modest chime for a
+  so-so score, the big fanfare for a 9+), stays visible for a couple
+  more seconds so it's actually readable, then settles into a
+  filmstrip below as the next photo takes over. Finishes with the
+  actual highest-scored photo framed in a gold medal border with a
+  🥇 medal and the winner's name — confetti, fanfare, the works. If
+  nothing's been scored yet, it tells Jurgen to run the Admin scoring
+  button first instead of doing nothing silently.
 - **Close app button** now sits in its own row just above "My entries"
   (was previously all the way down in the footer with Admin/notify
   settings) — easier to find without scrolling past every photo.
