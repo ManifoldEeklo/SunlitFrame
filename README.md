@@ -201,7 +201,11 @@ the server the whole time.
   blended into anyone's average, purely a fun side badge. Scoring
   happens in small batches (a few photos per request) so it can't
   time out on a large gallery; the Admin panel also shows every
-  photo's score and caption for transparency.
+  photo's score and caption for transparency. Once everything's been
+  scored, the button becomes **"Re-score all photos"** — clicking it
+  wipes every existing AI score first, then scores everything again
+  from scratch (simplest, least error-prone way to guarantee every
+  photo actually gets redone with no stale leftovers).
 - **AI Jury**: a "⚖️ AI Jury" button in the header, visible only when
   signed in as **Jurgen**. This is a *fake* jury for show — it makes
   **no API calls of its own** and needs no password. It purely

@@ -2723,21 +2723,22 @@
         try {
           const scoredCount = Object.keys(state.aiScores || {}).length;
           const isRescoreAll = state.index.length > 0 && scoredCount >= state.index.length;
-          let targetIds = isRescoreAll
-            ? state.index.map(p => p.id)
-            : state.index.filter(p => !state.aiScores[p.id]).map(p => p.id);
-
-          while (targetIds.length > 0) {
+          let remaining = 1;
+          let firstCall = true;
+          while (remaining > 0) {
+            const payload = { password: state.adminPasswordCache, batchSize: 4 };
+            if (isRescoreAll && firstCall) payload.resetFirst = true; // wipe everything once, then just refill normally
             const res = await fetch('/api/ai-score', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ password: state.adminPasswordCache, batchSize: 4, targetIds }),
+              body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
             await loadAiScores();
-            targetIds = Array.isArray(data.remainingIds) ? data.remainingIds : [];
+            remaining = data.remaining;
             state.aiScoreProgress = { scoredSoFar: data.scoredSoFar, totalPhotos: data.totalPhotos };
+            firstCall = false;
             render();
           }
         } catch (e) {
