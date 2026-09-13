@@ -65,7 +65,7 @@ async function scorePhotoWithClaude(dataUrl, apiKey) {
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
           {
             type: 'text',
-            text: 'Rate this vacation photo for creativity and beauty on a scale from 1 to 10 (one decimal place is fine). If the photo includes a person, add a small bonus to the score (people make a vacation contest more fun) — keep it modest and realistic, not automatic top marks. Then write a short, playful, wholesome caption of 5 words or fewer describing the main subject or scene (a person\'s activity/mood, an animal, flowers, a landscape feature, etc.) — describe what they\'re doing or the scene itself, never a person\'s looks or appearance. Respond with ONLY compact JSON, nothing else, in exactly this shape: {"score": 7.5, "note": "five words or fewer"}',
+            text: 'Rate this vacation photo for creativity and beauty on a scale from 1 to 10 (one decimal place is fine). If the photo includes a person, add a small bonus to the score (people make a vacation contest more fun) — keep it modest and realistic, not automatic top marks. Then write a short, playful, wholesome caption of 5 words or fewer describing the main subject or scene (a person\'s activity/mood, an animal, flowers, a landscape feature, etc.) — describe what they\'re doing or the scene itself, never a person\'s looks or appearance. Respond with ONLY compact JSON and nothing else — no markdown, no code fences, no extra commentary — in exactly this shape: {"score": 7.5, "note": "five words or fewer"}',
           },
         ],
       }],
@@ -73,13 +73,23 @@ async function scorePhotoWithClaude(dataUrl, apiKey) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || 'Anthropic API error');
-  const text = (data.content || []).map(b => b.text || '').join('');
+  let text = (data.content || []).map(b => b.text || '').join('').trim();
+  // Models sometimes wrap JSON in a markdown code fence even when told not
+  // to — strip that before parsing rather than letting it fail silently.
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch (e) {
-    const m = text.match(/[\d.]+/);
-    parsed = { score: m ? Number(m[0]) : null, note: '' };
+    // Salvage what we can instead of throwing away the caption entirely —
+    // this is what was previously causing captions to go missing whenever
+    // the response wasn't perfectly clean JSON.
+    const scoreMatch = text.match(/"score"\s*:\s*([\d.]+)/i) || text.match(/([\d.]+)/);
+    const noteMatch = text.match(/"note"\s*:\s*"([^"]*)"/i);
+    parsed = {
+      score: scoreMatch ? Number(scoreMatch[1]) : null,
+      note: noteMatch ? noteMatch[1] : '',
+    };
   }
   const score = Number(parsed.score);
   return {
